@@ -46,7 +46,7 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 
 ### update.sh
 
-Runs Craft CMS composer scripts `./craft migrate/all` and `./craft project-config/sync`. 
+Runs Craft CMS composer scripts `./craft migrate/all` and `./craft project-config/sync`.
 
 ### gitlab-webhook-push.php
 
@@ -55,6 +55,10 @@ Optional webhook script to run the bash scripts and creates a logfile. You can u
 ## What does it not do?
 
 This script doesn't do rollbacks. Although it doesn't re-link the `current` folder when the script throws an error. If an error occurs the previous release will still be the current one.
+
+## Why should I use it?
+
+When you don't want to spend money on deployment services and tools like Capistrano are just too much to set up for smaller projects.
 
 ## Roadmap
 
