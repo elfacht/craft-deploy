@@ -2,6 +2,6 @@
 
 Things change, people change, everything changes.
 
-## Unreleased
+## 0.1.0 - 2019-06-18
 ### Added
 - Initial release
