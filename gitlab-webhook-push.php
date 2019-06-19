@@ -22,7 +22,6 @@
  * This setting is REQUIRED
  */
 $hookfile = './deploy.sh';
-$updatefile = './update.sh';
 /* Log file location. Log file has both this script's and shell script's output.
  * Make sure PHP can write to the location of the log file, otherwise no log
  * will be created!
@@ -102,5 +101,4 @@ if (isset($ref))
 }
 log_append('Launching shell hook script...');
 exec_command('sh '.$hookfile);
-exec_command('sh '.$updatefile);
 log_append('Shell hook script finished');
