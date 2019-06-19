@@ -1,6 +1,6 @@
 # Craft CMS Deployment
 
-A bash script to run on staging and production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
+A bash script for zero-downtime Craft CMS deployment to run on production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
 
 ## Usage
 
@@ -65,7 +65,6 @@ When you don't want to spend money on deployment services and tools like Capistr
 - Delete releases folder if an error occurs during deployment.
 - Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).
 - Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
-
 
 ## License
 

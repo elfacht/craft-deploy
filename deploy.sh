@@ -75,7 +75,6 @@ fi
 #######################################
 if composer install
 then
-
   ### Create symlinks
   printf -- "- Create symlinks .."
   DONE=0;
@@ -104,32 +103,37 @@ then
     sleep 1;
   done
   printf -- ' DONE!\n';
-fi
 
-#./craft migrate/all
+  #######################################
+  # Kepp max. 5 releases,
+  # delete old release directories
+  #######################################
+  COUNT=`/bin/ls -l releases | /usr/bin/wc -l`
+  MINDIRS=6 # Keep 5 releases
 
-#######################################
-# Kepp max. 5 releases,
-# delete old release directories
-#######################################
-COUNT=`/bin/ls -l releases | /usr/bin/wc -l`
-MINDIRS=6 # Keep 5 releases
+  if [[ $COUNT -gt $MINDIRS ]]
+  then
+    OLDEST_RELEASE=$(ls -tr releases/* | head -1)
+    printf -- "- Delete oldest release '$OLDEST_RELEASE' .."
 
-if [[ $COUNT -gt $MINDIRS ]]
-then
-  OLDEST_RELEASE=$(ls -tr releases/* | head -1)
-  printf -- "- Delete oldest release '$OLDEST_RELEASE' .."
+    DONE=0;
+    while [ $DONE -eq 0 ]; do
+      rm -rf $(find releases/*/ -maxdepth 1 -type d | sort -r | tail -n 1 | sed 's/[0-9]*\.[0-9]*\t//')
 
-  DONE=0;
-  while [ $DONE -eq 0 ]; do
-    rm -rf $(find releases/*/ -maxdepth 1 -type d | sort -r | tail -n 1 | sed 's/[0-9]*\.[0-9]*\t//')
+      if [ "$?" = "0" ]; then DONE=1; fi;
+      printf -- '.';
+      sleep 1;
+    done
 
-    if [ "$?" = "0" ]; then DONE=1; fi;
-    printf -- '.';
-    sleep 1;
-  done
+    printf -- ' DONE!\n';
+  fi
+else
 
-  printf -- ' DONE!\n';
+  #######################################
+  # Delete release folder if composer fails.
+  #######################################
+  cd "../"
+  rm -rf $CURRENT_RELEASE
 fi
 
 
