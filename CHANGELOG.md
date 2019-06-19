@@ -2,7 +2,7 @@
 
 Things change, people change, everything changes.
 
-## Unreleased
+## [0.2.0](https://github.com/elfacht/craft-deploy/compare/0.1.2...0.2.0) - 2019-06-19
 ### Changed
 - Moved `./craft migrate/all` and `./craft project-config/sync` to `deploy.sh`.
 ### Removed
