@@ -6,7 +6,7 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 
 - Copy the files to your project folde on the server.
 - Replace `[GIT_REPO_URL]` and `[ASSETS_DIR]` in [deploy.sh](deploy.sh) with your credentials.
-- Run `chmod +x deploy.sh setup.sh update.sh` to set execution permissions.
+- Run `chmod +x deploy.sh setup.sh` to set execution permissions.
 - Run `./setup.sh` to create the initial folders.
 - Upload `.env` into `shared/`.
 - Upload `web/.htaccess` into `shared/web/`.
@@ -43,10 +43,7 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Creates symlinks for shared folders and files.
 - Creates a symlink from the `current` folder to the newest release.
 - Deletes old releases and keeps max. 5 releases.
-
-### update.sh
-
-Runs Craft CMS composer scripts `./craft migrate/all` and `./craft project-config/sync`.
+- Runs `./craft migrate/all` and `./craft project-config/sync` after release is created.
 
 ### gitlab-webhook-push.php
 
@@ -62,9 +59,9 @@ When you don't want to spend money on deployment services and tools like Capistr
 
 ## Roadmap
 
-- Delete releases folder if an error occurs during deployment.
-- Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).
-- Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
+- ~~Delete releases folder if an error occurs during deployment.~~
+- ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
+- ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~
 
 ## License
 
