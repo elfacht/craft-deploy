@@ -66,7 +66,6 @@ When you don't want to spend money on deployment services and tools like Capistr
 - Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).
 - Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
 
-
 ## License
 
 Itsa [MIT](LICENSE.md)!
