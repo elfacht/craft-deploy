@@ -1,6 +1,6 @@
 # Craft CMS Deployment
 
-A bash script to run on staging and production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
+A bash script for zero-downtime Craft CMS deployment to run on production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
 
 ## Usage
 
