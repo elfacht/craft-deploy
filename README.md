@@ -41,9 +41,9 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Clones your git repo into this folder.
 - Runs `composer install` to install Craft CMS.
 - Creates symlinks for shared folders and files.
+- Runs `./craft migrate/all` and `./craft project-config/sync`.
 - Creates a symlink from the `current` folder to the newest release.
 - Deletes old releases and keeps max. 5 releases.
-- Runs `./craft migrate/all` and `./craft project-config/sync` after release is created.
 
 ### gitlab-webhook-push.php
 
