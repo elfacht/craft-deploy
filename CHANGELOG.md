@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## Unreleased
+### Changed
+- Changed path in instructions step (README).
+
 ## [0.3.1](https://github.com/elfacht/craft-deploy/compare/0.3.0...0.3.1) - 2019-06-20
 ### Added
 - Added missing step to usage.

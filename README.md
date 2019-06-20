@@ -11,7 +11,7 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 - Upload `.env` into `shared/`.
 - Upload `storage` folder into `shared/`.
 - Upload `web/.htaccess` into `shared/web/`.
-- Upload `cpresources` folder into `shared/web/`.
+- Upload `web/cpresources` folder into `shared/web/`.
 - Upload your `[ASSETS_DIR]` folder and `web/cpresources` folder into `shared/web/`.
 - Setup a [webhook](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html) to call the scripts or run `./deploy.sh` manually.
 
