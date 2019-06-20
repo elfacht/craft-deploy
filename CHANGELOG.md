@@ -2,6 +2,12 @@
 
 Things change, people change, everything changes.
 
+## [0.3.0](https://github.com/elfacht/craft-deploy/compare/0.2.0...0.3.0) - 2019-06-20
+### Added
+- Added `set -e` to exit if any command fails.
+### Changed
+- Moved `./craft migrate/all` and `./craft project-config/sync` to `composer install` statement.
+
 ## [0.2.0](https://github.com/elfacht/craft-deploy/compare/0.1.2...0.2.0) - 2019-06-19
 ### Changed
 - Moved `./craft migrate/all` and `./craft project-config/sync` to `deploy.sh`.

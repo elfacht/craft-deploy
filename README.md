@@ -26,7 +26,7 @@ Following files and folders must be added to `.gitignore` to make the symlinks w
 
 ## Important
 
-This script is still beta. Please use it carefully and not on large and heavy prjects. Or do, whatever, your call.
+This script is still beta. Please use it carefully and not on large and heavy projects. Or do, whatever, your call.
 
 ## What does it do?
 
@@ -41,9 +41,9 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Clones your git repo into this folder.
 - Runs `composer install` to install Craft CMS.
 - Creates symlinks for shared folders and files.
+- Runs `./craft migrate/all` and `./craft project-config/sync`.
 - Creates a symlink from the `current` folder to the newest release.
 - Deletes old releases and keeps max. 5 releases.
-- Runs `./craft migrate/all` and `./craft project-config/sync` after release is created.
 
 ### gitlab-webhook-push.php
 

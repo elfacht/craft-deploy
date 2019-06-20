@@ -159,8 +159,13 @@ fi
 # - Git repo URL
 # - Assets directory name (web/[ASSETS_DIR])
 #######################################
-GIT_REPO="git@gitlab.com:elfacht/craftdeploy.git"
-ASSETS_DIR="uploads"
+GIT_REPO="[GIT_REPO_URL]"
+ASSETS_DIR="[ASSETS_DIR]"
+
+#######################################
+# Exit if any command fails
+#######################################
+set -e
 
 #######################################
 # Set timestamp as realease folder name.
@@ -211,7 +216,10 @@ fi
 #######################################
 if composer install
 then
-  ### Create symlinks
+  #######################################
+  # Create symlinks of shared files
+  # and folders.
+  #######################################
   printf -- "- Create symlinks .."
   DONE=0;
   while [ $DONE -eq 0 ]; do
@@ -227,7 +235,16 @@ then
   done
   printf -- ' DONE!\n';
 
-  ### Symlink current release
+  #######################################
+  # Run Craft CMS migration and project
+  # sync command.
+  #######################################
+  php ../craft migrate/all
+  php ../craft project-config/sync
+
+  #######################################
+  # Symlink current release
+  #######################################
   cd "../../../"
   printf -- "- Create release $CURRENT_RELEASE .."
   DONE=0;
@@ -270,14 +287,4 @@ else
   #######################################
   cd "../"
   rm -rf $CURRENT_RELEASE
-fi
-
-#######################################
-# Run Craft CMS migration and project
-# sync command.
-#######################################
-if [ -d "./releases/$CURRENT_RELEASE" ]
-then
-  php current/craft migrate/all
-  php current/craft project-config/sync
 fi
