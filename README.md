@@ -26,7 +26,7 @@ Following files and folders must be added to `.gitignore` to make the symlinks w
 
 ## Important
 
-This script is still beta. Please use it carefully and not on large and heavy prjects. Or do, whatever, your call.
+This script is still beta. Please use it carefully and not on large and heavy projects. Or do, whatever, your call.
 
 ## What does it do?
 
