@@ -2,6 +2,11 @@
 
 Things change, people change, everything changes.
 
+## [0.4.1](https://github.com/elfacht/craft-deploy/compare/0.4.0...0.4.1) - 2019-06-23
+### Added
+- Added bug warning.
+- Added version in comments.
+
 ## [0.4.0](https://github.com/elfacht/craft-deploy/compare/0.3.1...0.4.0) - 2019-06-22
 ### Added
 - Added `err` timestamp.
