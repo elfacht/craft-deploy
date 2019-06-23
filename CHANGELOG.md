@@ -2,6 +2,15 @@
 
 Things change, people change, everything changes.
 
+## [0.4.0](https://github.com/elfacht/craft-deploy/compare/0.3.1...0.4.0) - 2019-06-22
+### Added
+- Added `err` timestamp.
+### Changed
+- Changed path in instructions step (README).
+### Fixed
+- Removed duplicate code.
+- Fixed bash formatting.
+
 ## [0.3.1](https://github.com/elfacht/craft-deploy/compare/0.3.0...0.3.1) - 2019-06-20
 ### Added
 - Added missing step to usage.
