@@ -23,8 +23,10 @@
 # - Git repo URL
 # - Assets directory name (web/[ASSETS_DIR])
 #######################################
-GIT_REPO="[GIT_REPO_URL]"
-ASSETS_DIR="[ASSETS_DIR]"
+GIT_REPO="[GIT_REPO_URL]" # required
+ROOT_PATH="[ROOT/PATH/TO/PROJECT/]" # Server root path – required
+ASSETS_DIR="[ASSETS_DIR]" # Assets folder – required
+RESTART_PHP="" # Restart PHP if symlinks are cached – optional
 
 #######################################
 # Exit if any command fails
@@ -83,7 +85,7 @@ fi
 # Run composer install and
 # create symlinks
 #######################################
-if composer install; then
+if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   #######################################
   # Create symlinks of shared files
   # and folders.
@@ -91,11 +93,11 @@ if composer install; then
   printf -- "- Create symlinks .."
   DONE=0;
   while [ $DONE -eq 0 ]; do
-    ln -sfn "../../shared/.env"
-    ln -sfn "../../shared/storage" .
-    cd web && ln -sfn "../../../shared/web/.htaccess"
-    ln -sfn "../../../shared/web/$ASSETS_DIR"
-    ln -sfn "../../../shared/web/cpresources"
+    ln -sfn "$ROOT_PATH/shared/.env"
+    ln -sfn "$ROOT_PATH/shared/storage" .
+    cd web && ln -sfn "$ROOT_PATH/shared/web/.htaccess"
+    ln -sfn "$ROOT_PATH/shared/web/$ASSETS_DIR"
+    ln -sfn "$ROOT_PATH/shared/web/cpresources"
 
     if [ "$?" = "0" ]; then DONE=1; fi;
     printf -- '.';
@@ -139,6 +141,24 @@ if composer install; then
     DONE=0;
     while [ $DONE -eq 0 ]; do
       rm -rf $(find releases/*/ -maxdepth 1 -type d | sort -r | tail -n 1 | sed 's/[0-9]*\.[0-9]*\t//')
+
+      if [ "$?" = "0" ]; then DONE=1; fi;
+      printf -- '.';
+      sleep 1;
+    done
+
+    printf -- ' DONE!\n';
+  fi
+
+  #######################################
+  # Restart PHP
+  #######################################
+  if ${RESTART_PHP}; then
+    printf -- "- Restart PHP .."
+
+    DONE=0;
+    while [ $DONE -eq 0 ]; do
+      ${RESTART_PHP}
 
       if [ "$?" = "0" ]; then DONE=1; fi;
       printf -- '.';

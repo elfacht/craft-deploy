@@ -2,6 +2,11 @@
 
 Things change, people change, everything changes.
 
+## [0.5.0](https://github.com/elfacht/craft-deploy/compare/0.4.1...0.5.0) - 2019-07-03
+### Added
+- Added `ROOT_PATH` constant for absolute server paths. **REQUIRED! PLEASE UPDATE!**
+- Added `RESTART_PHP` constant for optional PHP restart command, in case symlinks are cached.
+
 ## [0.4.1](https://github.com/elfacht/craft-deploy/compare/0.4.0...0.4.1) - 2019-06-23
 ### Added
 - Added bug warning.
