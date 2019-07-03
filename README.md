@@ -2,12 +2,6 @@
 
 A bash script for zero-downtime Craft CMS deployment to run on production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
 
----
-
-**WARNING: There might be a bug where the current Craft installation stucks in an old release until this folder will be deleted.**
-
----
-
 ## Usage
 
 - Copy the files to your project folde on the server.
