@@ -12,6 +12,8 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 
 - Copy the files to your project folde on the server.
 - Replace `[GIT_REPO_URL]` and `[ASSETS_DIR]` in [deploy.sh](deploy.sh) with your credentials.
+- Add `ROOT_PATH` for server root path to project. **REQUIRED!**
+- Add optional `PHP_RESTART` command, in case symlinks are cached.
 - Run `chmod +x deploy.sh setup.sh` to set execution permissions.
 - Run `./setup.sh` to create the initial folders.
 - Upload `.env` into `shared/`.
