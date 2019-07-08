@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## Unreleased
+### Added
+- Added `.env`
+
 ## [0.5.0](https://github.com/elfacht/craft-deploy/compare/0.4.1...0.5.0) - 2019-07-03
 ### Added
 - Added `ROOT_PATH` constant for absolute server paths. **REQUIRED! PLEASE UPDATE!**

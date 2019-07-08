@@ -5,3 +5,4 @@ current
 releases
 shared
 deploy.log
+.env
