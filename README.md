@@ -4,10 +4,8 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 
 ## Usage
 
-- Copy the files to your project folde on the server.
-- Replace `[GIT_REPO_URL]` and `[ASSETS_DIR]` in [deploy.sh](deploy.sh) with your credentials.
-- Add `ROOT_PATH` for server root path to project. **REQUIRED!**
-- Add optional `PHP_RESTART` command, in case symlinks are cached.
+- Copy the files to your project folder on the server.
+- Rename `.env.example` to `.env` and enter your credentials.
 - Run `chmod +x deploy.sh setup.sh` to set execution permissions.
 - Run `./setup.sh` to create the initial folders.
 - Upload `.env` into `shared/`.
@@ -47,6 +45,7 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Runs `./craft migrate/all` and `./craft project-config/sync`.
 - Creates a symlink from the `current` folder to the newest release.
 - Deletes old releases and keeps max. 5 releases.
+- Restarts PHP to delete symlink cache (optional)
 
 ### gitlab-webhook-push.php
 
@@ -62,6 +61,7 @@ When you don't want to spend money on deployment services and tools like Capistr
 
 ## Roadmap
 
+- Add `.env` for better config handling.
 - ~~Delete releases folder if an error occurs during deployment.~~
 - ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
 - ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~

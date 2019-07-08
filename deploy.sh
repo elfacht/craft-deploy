@@ -3,8 +3,6 @@
 # Craft CMS deployment script on staging/production servers.
 # @see https://github.com/elfacht/craft-deploy
 #
-# @version 0.4.1
-#
 # - Creating a release folder
 # - Cloning the git repo.
 # - Creating symlinks to shared folders and files.
@@ -19,14 +17,22 @@
 # @license MIT
 
 #######################################
-# Set constants:
+# Get constants from .env file:
 # - Git repo URL
+# - Server root path to project
 # - Assets directory name (web/[ASSETS_DIR])
+# - Restart PHP task (if symlinks are cached)
 #######################################
-GIT_REPO="[GIT_REPO_URL]" # required
-ROOT_PATH="[ROOT/PATH/TO/PROJECT/]" # Server root path – required
-ASSETS_DIR="[ASSETS_DIR]" # Assets folder – required
-RESTART_PHP="" # Restart PHP if symlinks are cached – optional
+read_var() {
+    VAR=$(grep $1 $2 | xargs)
+    IFS="=" read -ra VAR <<< "$VAR"
+    echo ${VAR[1]}
+}
+
+GIT_REPO=$(read_var DEPLOY_REPO .env)
+ROOT_PATH=$(read_var DEPLOY_ROOT .env)
+ASSETS_DIR=$(read_var DEPLOY_ASSETS_DIR .env)
+RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
 
 #######################################
 # Exit if any command fails
@@ -115,11 +121,11 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   #######################################
   # Symlink current release
   #######################################
-  cd "../../../"
+  cd $ROOT_PATH
   printf -- "- Create release $CURRENT_RELEASE .."
   DONE=0;
   while [ $DONE -eq 0 ]; do
-    ln -sfn "releases/$CURRENT_RELEASE/" current
+    ln -sfn "$ROOT_PATH/releases/$CURRENT_RELEASE/" current
 
     if [ "$?" = "0" ]; then DONE=1; fi;
     printf -- '.';
@@ -131,7 +137,7 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   # Kepp max. 5 releases,
   # delete old release directories
   #######################################
-  COUNT=`/bin/ls -l releases | /usr/bin/wc -l`
+  COUNT=`/bin/ls -l $ROOT_PATH/releases | /usr/bin/wc -l`
   MINDIRS=6 # Keep 5 releases
 
   if [[ $COUNT -gt $MINDIRS ]]; then
