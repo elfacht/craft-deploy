@@ -62,7 +62,7 @@ When you don't want to spend money on deployment services and tools like Capistr
 
 ## Roadmap
 
-- Add `.env` for better config handling.
+- ~~Add `.env` for better config handling.~~
 - ~~Delete releases folder if an error occurs during deployment.~~
 - ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
 - ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~
