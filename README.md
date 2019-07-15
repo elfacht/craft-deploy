@@ -45,6 +45,7 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Runs `./craft migrate/all` and `./craft project-config/sync`.
 - Creates a symlink from the `current` folder to the newest release.
 - Deletes old releases and keeps max. 5 releases.
+- Deletes oldest backup and keeps max. `[DEPLOY_KEEP_BACKUPS]` backups.
 - Restarts PHP to delete symlink cache (optional)
 
 ### gitlab-webhook-push.php

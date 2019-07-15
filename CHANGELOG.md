@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## Unreleased
+### Added
+- Added `DEPLOY_KEEP_BACKUPS` option and function.
+
 ## [0.6.0](https://github.com/elfacht/craft-deploy/compare/0.5.0...0.6.0) - 2019-07-08
 ### Added
 - Added `.env` environment to separate config from code.
