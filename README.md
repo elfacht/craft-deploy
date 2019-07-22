@@ -5,9 +5,8 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 ## Usage
 
 - Copy the files to your project folder on the server.
-- Rename `.env.example` to `.env` and enter your credentials.
 - Run `chmod +x deploy.sh setup.sh` to set execution permissions.
-- Run `./setup.sh` to create the initial folders.
+- Run `./setup.sh` to create the initial folders and files.
 - Upload `.env` into `shared/`.
 - Upload `storage` folder into `shared/`.
 - Upload `web/.htaccess` into `shared/web/`.
@@ -44,7 +43,7 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Creates symlinks for shared folders and files.
 - Runs `./craft migrate/all` and `./craft project-config/sync`.
 - Creates a symlink from the `current` folder to the newest release.
-- Deletes old releases and keeps max. 5 releases.
+- Deletes old releases and keeps max. `[DEPLOY_KEEP_RELEASES]` releases.
 - Deletes oldest backup and keeps max. `[DEPLOY_KEEP_BACKUPS]` backups.
 - Restarts PHP to delete symlink cache (optional)
 
@@ -62,7 +61,7 @@ When you don't want to spend money on deployment services and tools like Capistr
 
 ## Roadmap
 
-- Add `.env` for better config handling.
+- ~~Add `.env` for better config handling.~~
 - ~~Delete releases folder if an error occurs during deployment.~~
 - ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
 - ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~
