@@ -35,6 +35,7 @@ GIT_REPO=$(read_var DEPLOY_REPO .env)
 ROOT_PATH=$(read_var DEPLOY_ROOT .env)
 ASSETS_DIR=$(read_var DEPLOY_ASSETS_DIR .env)
 RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
+KEEP_RELEASES=$(read_var DEPLOY_KEEP_RELEASES .env)
 KEEP_BACKUPS=$(read_var DEPLOY_KEEP_BACKUPS .env)
 
 #######################################
@@ -141,7 +142,7 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   # delete old release directories
   #######################################
   COUNT=`/bin/ls -l $ROOT_PATH/releases | /usr/bin/wc -l`
-  MINDIRS=6 # Keep 5 releases
+  MINDIRS=$KEEP_RELEASES+1 # Keep XX releases
 
   if [[ $COUNT -gt $MINDIRS ]]; then
     OLDEST_RELEASE=$(ls -tr releases/* | head -1)

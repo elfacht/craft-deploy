@@ -2,6 +2,12 @@
 
 Things change, people change, everything changes.
 
+## Unreleased
+### Added
+- Added `DEPLOY_KEEP_RELEASES` constant.
+- `setup.sh` will now create an empty log file.
+- `setup.sh` will now rename `.env.example` to `.env`.
+
 ## [0.6.1](https://github.com/elfacht/craft-deploy/compare/0.6.0...0.6.1) - 2019-07-15
 ### Added
 - Added `DEPLOY_KEEP_BACKUPS` option and function.
