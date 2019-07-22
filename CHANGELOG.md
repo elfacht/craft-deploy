@@ -5,6 +5,7 @@ Things change, people change, everything changes.
 ## Unreleased
 ### Added
 - Added `DEPLOY_KEEP_RELEASES` constant.
+- Added `DEPLOY_BRANCH` constant to clone specific branch.
 - `setup.sh` will now create an empty log file.
 - `setup.sh` will now rename `.env.example` to `.env`.
 

@@ -3,13 +3,11 @@
 # Craft CMS deployment script on staging/production servers.
 # @see https://github.com/elfacht/craft-deploy
 #
-# @version 0.6.0
-#
 # - Creating a release folder
 # - Cloning the git repo.
 # - Creating symlinks to shared folders and files.
 # - Symlink on current folder to newest release.
-# - Deleting old releases (keeping max. 5)
+# - Deleting old releases and backups
 #
 # @author
 #   Martin Szymanski <martin@elfacht.com>
@@ -21,9 +19,12 @@
 #######################################
 # Get constants from .env file:
 # - Git repo URL
+# - Git repo branch
 # - Server root path to project
 # - Assets directory name (web/[ASSETS_DIR])
 # - Restart PHP task (if symlinks are cached)
+# - Releases to keep
+# - Backups to keep
 #######################################
 read_var() {
     VAR=$(grep $1 $2 | xargs)
@@ -32,11 +33,21 @@ read_var() {
 }
 
 GIT_REPO=$(read_var DEPLOY_REPO .env)
+GIT_BRANCH=$(read_var DEPLOY_BRANCH .env)
 ROOT_PATH=$(read_var DEPLOY_ROOT .env)
 ASSETS_DIR=$(read_var DEPLOY_ASSETS_DIR .env)
 RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
 KEEP_RELEASES=$(read_var DEPLOY_KEEP_RELEASES .env)
 KEEP_BACKUPS=$(read_var DEPLOY_KEEP_BACKUPS .env)
+
+#######################################
+# Set git branch variable
+#######################################
+if [ -z "$GIT_BRANCH" ]; then
+  BRANCH=""
+else
+  BRANCH="--branch $GIT_BRANCH"
+fi
 
 #######################################
 # Exit if any command fails
@@ -86,7 +97,7 @@ if [ -d "./releases/" ]; then
   echo "Created release $CURRENT_RELEASE folder."
 
   ### Clone repo
-  git clone $GIT_REPO .
+  git clone $GIT_REPO $BRANCH .
 else
   exit 1
 fi
