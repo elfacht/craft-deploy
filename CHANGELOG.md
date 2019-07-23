@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## Unreleased
+### Added
+- Added [rollback.sh](rollback.sh) for rollbacks.
+
 ## [0.6.2](https://github.com/elfacht/craft-deploy/compare/0.6.1...0.6.2) - 2019-07-22
 ### Added
 - Added `DEPLOY_KEEP_RELEASES` constant.
