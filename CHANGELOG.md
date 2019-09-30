@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## [0.6.3.1](https://github.com/elfacht/craft-deploy/compare/0.6.3...0.6.3.1) - 2019-09-30
+### Added
+- Added `DEPLOY_ASSETS_DIR` after deleting it accidentally.
+
 ## [0.6.3](https://github.com/elfacht/craft-deploy/compare/0.6.2...0.6.3) - 2019-09-30
 ### Added
 - Added [rollback.sh](rollback.sh) for rollbacks.
