@@ -2,6 +2,13 @@
 
 Things change, people change, everything changes.
 
+## [0.6.3](https://github.com/elfacht/craft-deploy/compare/0.6.2...0.6.3) - 2019-09-30
+### Added
+- Added [rollback.sh](rollback.sh) for rollbacks.
+- Added `DEPLOY_URL` option.
+- Added `DEPLOY_CLEAR_OPCACHE` option.
+- Added function to clear `opcache` to reset symlink cache without restarting PHP.
+
 ## [0.6.2](https://github.com/elfacht/craft-deploy/compare/0.6.1...0.6.2) - 2019-07-22
 ### Added
 - Added `DEPLOY_KEEP_RELEASES` constant.

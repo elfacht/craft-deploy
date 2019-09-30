@@ -47,13 +47,15 @@ Creates the necessary `releases`, `shared` and `shared/web` folders on the serve
 - Deletes oldest backup and keeps max. `[DEPLOY_KEEP_BACKUPS]` backups.
 - Restarts PHP to delete symlink cache (optional)
 
+### rollback.sh
+
+Creates a symlink from `current/` to the second newest release folder (i.e. the former release), deletes the current release folder afterwards and runs `composer install`, `./craft migrate/all` and `./craft project-config/sync`. That's all. No further database actions.
+
+**If you run a major update with significant database migrations you do it on your own responsibility!**
+
 ### gitlab-webhook-push.php
 
 Optional webhook script to run the bash scripts and creates a logfile. You can use your own scripts of course.
-
-## What does it not do?
-
-This script doesn't do rollbacks. Although it doesn't re-link the `current` folder when the script throws an error. If an error occurs the previous release will still be the current one.
 
 ## Why should I use it?
 
