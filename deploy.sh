@@ -3,6 +3,8 @@
 # Craft CMS deployment script on staging/production servers.
 # @see https://github.com/elfacht/craft-deploy
 #
+# v0.6.3.1
+#
 # - Creating a release folder
 # - Cloning the git repo.
 # - Creating symlinks to shared folders and files.

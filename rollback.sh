@@ -4,6 +4,8 @@
 # staging/production servers.
 # @see https://github.com/elfacht/craft-deploy
 #
+# v0.6.3.1
+#
 # - Rollback to second newest release folder.
 # - This script Will not to any database work!
 #
