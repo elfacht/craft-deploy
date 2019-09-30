@@ -35,7 +35,9 @@ read_var() {
 GIT_REPO=$(read_var DEPLOY_REPO .env)
 GIT_BRANCH=$(read_var DEPLOY_BRANCH .env)
 ROOT_PATH=$(read_var DEPLOY_ROOT .env)
+ROOT_URL=$(read_var DEPLOY_URL .env)
 ASSETS_DIR=$(read_var DEPLOY_ASSETS_DIR .env)
+CLEAR_OPCACHE=$(read_var DEPLOY_CLEAR_OPCACHE .env)
 RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
 KEEP_RELEASES=$(read_var DEPLOY_KEEP_RELEASES .env)
 KEEP_BACKUPS=$(read_var DEPLOY_KEEP_BACKUPS .env)
@@ -195,9 +197,33 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   fi
 
   #######################################
+  # Clear opcache
+  #######################################
+  if [[ $CLEAR_OPCACHE -eq 1 ]]; then
+    printf -- "- Clear opcache .."
+
+    DONE=0;
+    while [ $DONE -eq 0 ]; do
+      WEBDIR=${ROOT_PATH}/current/web/
+      RANDOM_NAME=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+      echo "<?php opcache_reset(); ?>" > ${WEBDIR}${RANDOM_NAME}.php
+      curl ${ROOT_URL}/${RANDOM_NAME}.php
+      rm ${WEBDIR}${RANDOM_NAME}.php
+
+      if [ "$?" = "0" ]; then DONE=1; fi;
+      printf -- '.';
+      sleep 1;
+    done
+
+    printf -- ' DONE!\n';
+  fi
+
+  #######################################
   # Restart PHP
   #######################################
-  if ${RESTART_PHP}; then
+  if [[ -z $RESTART_PHP ]]; then
+    echo ""
+  else
     printf -- "- Restart PHP .."
 
     DONE=0;
