@@ -2,7 +2,7 @@
 
 Things change, people change, everything changes.
 
-## Unreleased
+## [0.6.3](https://github.com/elfacht/craft-deploy/compare/0.6.2...0.6.3) - 2019-09-30
 ### Added
 - Added [rollback.sh](rollback.sh) for rollbacks.
 - Added `DEPLOY_URL` option.
