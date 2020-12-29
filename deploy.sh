@@ -3,6 +3,8 @@
 # Craft CMS deployment script on staging/production servers.
 # @see https://github.com/elfacht/craft-deploy
 #
+# v0.6.4
+#
 # - Creating a release folder
 # - Cloning the git repo.
 # - Creating symlinks to shared folders and files.
@@ -133,7 +135,7 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   # sync command.
   #######################################
   php ../craft migrate/all
-  php ../craft project-config/sync
+  php ../craft project-config/apply
 
   #######################################
   # Symlink current release

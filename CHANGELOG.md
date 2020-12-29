@@ -2,6 +2,10 @@
 
 Things change, people change, everything changes.
 
+## [0.6.4](https://github.com/elfacht/craft-deploy/compare/0.6.3.1...0.6.4) - 2020-12-29
+### Changed
+- Use `project-config/apply` for Craft CMS 3.5+
+
 ## [0.6.3.1](https://github.com/elfacht/craft-deploy/compare/0.6.3...0.6.3.1) - 2019-09-30
 ### Added
 - Added `DEPLOY_ASSETS_DIR` after deleting it accidentally.

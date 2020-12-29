@@ -2,6 +2,8 @@
 #
 # Initial setup
 #
+# v0.6.3.1
+#
 # @author
 #   Martin Szymanski <martin@elfacht.com>
 #   https://www.elfacht.com
