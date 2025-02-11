@@ -12,7 +12,6 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 - Upload `web/.htaccess` into `shared/web/`.
 - Upload `web/cpresources` folder into `shared/web/`.
 - Upload your `[ASSETS_DIR]` folder and `web/cpresources` folder into `shared/web/`.
-- Setup a [webhook](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html) to call the scripts or run `./deploy.sh` manually.
 
 ## .gitignore
 
@@ -63,11 +62,12 @@ When you don't want to spend money on deployment services and tools like Capistr
 
 ## Roadmap
 
-- Set project folder name in .env
-- ~~Add `.env` for better config handling.~~
-- ~~Delete releases folder if an error occurs during deployment.~~
-- ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
-- ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~
+- [ ] Add DB rollback script
+- [x] Set project folder name in .env
+- [x] dd `.env` for better config handling.
+- [x] Delete releases folder if an error occurs during deployment.
+- [x] Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails). (Corrupt folders will be removed if installation fails)
+- [x] Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
 
 ## License
 
