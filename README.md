@@ -52,10 +52,6 @@ Creates a symlink from `current/` to the second newest release folder (i.e. the 
 
 **If you run a major update with significant database migrations you do it on your own responsibility!**
 
-### gitlab-webhook-push.php
-
-Optional webhook script to run the bash scripts and creates a logfile. You can use your own scripts of course.
-
 ## Why should I use it?
 
 When you don't want to spend money on deployment services and tools like Capistrano are just too much to set up for smaller projects.
