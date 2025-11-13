@@ -38,6 +38,7 @@ GIT_REPO=$(read_var DEPLOY_REPO .env)
 GIT_BRANCH=$(read_var DEPLOY_BRANCH .env)
 ROOT_PATH=$(read_var DEPLOY_ROOT .env)
 ROOT_URL=$(read_var DEPLOY_URL .env)
+CRAFT_DIR=$(read_var DEPLOY_CRAFT_DIR .env)
 ASSETS_DIR=$(read_var DEPLOY_ASSETS_DIR .env)
 CLEAR_OPCACHE=$(read_var DEPLOY_CLEAR_OPCACHE .env)
 RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
@@ -57,6 +58,7 @@ fi
 # Exit if any command fails
 #######################################
 set -e
+trap 'echo "An error occurred on line $LINENO. Exiting." >&2; exit 1' ERR
 
 #######################################
 # Set timestamp as realease folder name.
@@ -87,7 +89,7 @@ CURRENT_RELEASE=$(timestamp)
 # Backup database
 #######################################
 if [ -d "./current/" ]; then
-  php current/craft backup/db
+  php current/$CRAFT_DIR/craft db/backup
 fi
 
 #######################################
@@ -110,7 +112,7 @@ fi
 # Run composer install and
 # create symlinks
 #######################################
-if composer install --no-interaction --prefer-dist --optimize-autoloader; then
+if cd "$CRAFT_DIR" && composer install --no-interaction --prefer-dist --optimize-autoloader; then
   #######################################
   # Create symlinks of shared files
   # and folders.
@@ -153,7 +155,7 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   printf -- ' DONE!\n';
 
   #######################################
-  # Kepp max. 5 releases,
+  # Keep max. $KEEP_RELEASES releases,
   # delete old release directories
   #######################################
   COUNT=`/bin/ls -l $ROOT_PATH/releases | /usr/bin/wc -l`
@@ -176,7 +178,7 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
   fi
 
   #######################################
-  # Kepp max. X backups,
+  # Keep max. $KEEP_BACKUPS backups,
   # delete oldest backup
   #######################################
   COUNT=`/bin/ls -l $ROOT_PATH/shared/storage/backups | /usr/bin/wc -l`
@@ -200,14 +202,15 @@ if composer install --no-interaction --prefer-dist --optimize-autoloader; then
 
   #######################################
   # Clear opcache
+  # This will only work if the SSL certs are working correctly on your systems.
   #######################################
   if [[ $CLEAR_OPCACHE -eq 1 ]]; then
     printf -- "- Clear opcache .."
 
     DONE=0;
     while [ $DONE -eq 0 ]; do
-      WEBDIR=${ROOT_PATH}/current/web/
-      RANDOM_NAME=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 13)
+      WEBDIR=${ROOT_PATH}/current/$CRAFT_DIR/web/
+      RANDOM_NAME=$(LANG=C tr -dc A-Za-z0-9 </dev/urandom | head -c 13)
       echo "<?php opcache_reset(); ?>" > ${WEBDIR}${RANDOM_NAME}.php
       curl ${ROOT_URL}/${RANDOM_NAME}.php
       rm ${WEBDIR}${RANDOM_NAME}.php

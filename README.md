@@ -12,7 +12,6 @@ A bash script for zero-downtime Craft CMS deployment to run on production server
 - Upload `web/.htaccess` into `shared/web/`.
 - Upload `web/cpresources` folder into `shared/web/`.
 - Upload your `[ASSETS_DIR]` folder and `web/cpresources` folder into `shared/web/`.
-- Setup a [webhook](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html) to call the scripts or run `./deploy.sh` manually.
 
 ## .gitignore
 
@@ -53,21 +52,18 @@ Creates a symlink from `current/` to the second newest release folder (i.e. the 
 
 **If you run a major update with significant database migrations you do it on your own responsibility!**
 
-### gitlab-webhook-push.php
-
-Optional webhook script to run the bash scripts and creates a logfile. You can use your own scripts of course.
-
 ## Why should I use it?
 
 When you don't want to spend money on deployment services and tools like Capistrano are just too much to set up for smaller projects.
 
 ## Roadmap
 
-- Set project folder name in .env
-- ~~Add `.env` for better config handling.~~
-- ~~Delete releases folder if an error occurs during deployment.~~
-- ~~Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails).~~ (Corrupt folders will be removed if installation fails)
-- ~~Integrate `update.sh` scripts into `deploy.sh` and/or create flags.~~
+- [ ] Add DB rollback script
+- [x] Set project folder name in .env
+- [x] dd `.env` for better config handling.
+- [x] Delete releases folder if an error occurs during deployment.
+- [x] Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails). (Corrupt folders will be removed if installation fails)
+- [x] Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
 
 ## License
 
