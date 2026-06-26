@@ -1,38 +1,51 @@
 #!/bin/bash
 #
-# Initial setup
+# Initial setup for craft-deploy.
+# Creates the directory structure and the config file on the server.
+# @see https://github.com/elfacht/craft-deploy
 #
-# v0.6.3.1
-#
-# @author
-#   Martin Szymanski <martin@elfacht.com>
-#   https://www.elfacht.com
-#   https://github.com/elfacht
-#
+# @author  Martin Szymanski <martin@elfacht.com>
 # @license MIT
 
-### Check if releases folder exists
-if [ ! -d "./releases/" ]
-then
-  printf -- "Create releases folder. \n"
-  mkdir releases
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
+
+cd "$SCRIPT_DIR"
+
+#######################################
+# Releases directory.
+#######################################
+if [ ! -d "./releases" ]; then
+  log "Create releases folder."
+  mkdir -p releases
 fi
 
-if [ ! -d "./shared/" ]
-then
-  printf -- "Create shared folder. \n"
-  mkdir shared && cd "$_"
-  mkdir web
+#######################################
+# Shared directory structure.
+#######################################
+if [ ! -d "./shared" ]; then
+  log "Create shared folder."
+  mkdir -p shared/web shared/storage/backups
 fi
 
-if [ ! -f "./deploy.log" ]
-then
-  printf -- "Create empty log file. \n"
+#######################################
+# Empty log file.
+#######################################
+if [ ! -f "./deploy.log" ]; then
+  log "Create empty log file."
   touch deploy.log
 fi
 
-if [ ! -f "./.env.example" ]
-then
-  printf -- "Rename .env.example. \n"
-  mv .env.example .env
+#######################################
+# Config file. Copy the example without destroying it,
+# and only when no .env exists yet.
+#######################################
+if [ -f ".env.example" ] && [ ! -f ".env" ]; then
+  log "Create .env from .env.example — edit it before deploying."
+  cp .env.example .env
 fi
+
+log "Setup complete. Next: edit .env, then upload your shared files into ./shared."

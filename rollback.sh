@@ -1,104 +1,123 @@
 #!/bin/bash
 #
-# Rollback script for the Craft CMS deployment script on
-# staging/production servers.
+# Rollback script for the Craft CMS deployment.
 # @see https://github.com/elfacht/craft-deploy
 #
-# v0.6.3.1
+# - Switches the `current` symlink back to the previous release.
+# - Deletes the rolled-back (newest) release folder.
+# - Runs composer install, migrations and project-config apply.
+# - This script does NOT touch the database beyond migrations!
 #
-# - Rollback to second newest release folder.
-# - This script Will not to any database work!
-#
-# @author
-#   Martin Szymanski <martin@elfacht.com>
-#   https://www.elfacht.com
-#   https://github.com/elfacht
-#
+# @author  Martin Szymanski <martin@elfacht.com>
 # @license MIT
 
-#######################################
-# Exit if any command fails
-#######################################
-set -e
+set -euo pipefail
 
 #######################################
-# Get constants from .env file:
-# - Server root path to project
-# - Restart PHP task (if symlinks are cached)
+# Resolve script directory and load shared library.
 #######################################
-read_var() {
-    VAR=$(grep $1 $2 | xargs)
-    IFS="=" read -ra VAR <<< "$VAR"
-    echo ${VAR[1]}
-}
-
-ROOT_PATH=$(read_var DEPLOY_ROOT .env)
-RESTART_PHP=$(read_var DEPLOY_RESTART_PHP .env)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$SCRIPT_DIR/lib.sh"
 
 #######################################
-# Get the current release folder
+# Parse flags.
 #######################################
-CURRENT_RELEASE=$(ls -td $ROOT_PATH/releases/* | head -1 | tail -n 1)
-
-#######################################
-# Get the second newest folder
-#######################################
-LAST_STABLE=$(ls -td $ROOT_PATH/releases/* | head -2 | tail -n 1)
-
-#######################################
-# Symlink current release
-#######################################
-cd $ROOT_PATH
-printf -- "Symlink current release to $LAST_STABLE .."
-DONE=0;
-while [ $DONE -eq 0 ]; do
-  ln -sfn $LAST_STABLE current
-
-  if [ "$?" = "0" ]; then DONE=1; fi;
-  printf -- '.';
-  sleep 1;
+ENV_FILE="$SCRIPT_DIR/.env"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --env)      ENV_FILE="${2:-}"; shift 2 ;;
+    --dry-run)  DRY_RUN=1; shift ;;
+    --verbose)  set -x; shift ;;
+    --version)  echo "$CRAFT_DEPLOY_VERSION"; exit 0 ;;
+    -h|--help)
+      echo "Usage: ./rollback.sh [--env <path>] [--dry-run]"; exit 0 ;;
+    *) err "Unknown option: $1"; exit 1 ;;
+  esac
 done
-printf -- ' DONE!\n';
 
 #######################################
-# Delete former release folder
+# Load configuration.
 #######################################
-cd $ROOT_PATH
-printf -- "Delete former release folder $CURRENT_RELEASE .."
-DONE=0;
-while [ $DONE -eq 0 ]; do
-  rm -rf  $CURRENT_RELEASE
+load_env "$ENV_FILE"
 
-  if [ "$?" = "0" ]; then DONE=1; fi;
-  printf -- '.';
-  sleep 1;
-done
-printf -- ' DONE!\n';
+ROOT_PATH="${DEPLOY_ROOT:-}"
+CRAFT_DIR="${DEPLOY_CRAFT_DIR:-}"
+RESTART_PHP="${DEPLOY_RESTART_PHP:-}"
+PHP_BIN="${DEPLOY_PHP_BIN:-php}"
+COMPOSER_BIN="${DEPLOY_COMPOSER_BIN:-composer}"
+COMPOSER_FLAGS="${DEPLOY_COMPOSER_FLAGS:---no-interaction --prefer-dist --optimize-autoloader}"
+RUN_MIGRATE="${DEPLOY_RUN_MIGRATE:-1}"
+RUN_PROJECT_CONFIG="${DEPLOY_RUN_PROJECT_CONFIG:-1}"
+
+require_var DEPLOY_ROOT
+[ -d "$ROOT_PATH/releases" ] || die "Missing releases directory: $ROOT_PATH/releases"
+
+LOG_FILE="$ROOT_PATH/deploy.log"
+trap 'err "Rollback failed at line $LINENO."' ERR
 
 #######################################
-# Run composer and Craft scripts
+# Determine the current (newest) and previous releases by name (timestamp).
 #######################################
-cd $ROOT_PATH/current
-if composer install --no-interaction --prefer-dist --optimize-autoloader; then
-  php craft migrate/all
-  php craft project-config/sync
-  cd $ROOT_PATH
+releases=()
+while IFS= read -r r; do
+  [ -n "$r" ] && releases+=("$r")
+done < <(find "$ROOT_PATH/releases" -mindepth 1 -maxdepth 1 -type d | sort -r)
+
+if [ "${#releases[@]}" -lt 2 ]; then
+  die "Need at least two releases to roll back (found ${#releases[@]})."
+fi
+
+CURRENT_RELEASE="${releases[0]}"
+LAST_STABLE="${releases[1]}"
+
+log "=== Rolling back to $(basename "$LAST_STABLE") ==="
+
+if [ "$DRY_RUN" = "1" ]; then
+  log "[dry-run] Would switch current -> $LAST_STABLE"
+  log "[dry-run] Would delete $CURRENT_RELEASE"
+  exit 0
 fi
 
 #######################################
-# Restart PHP
+# Switch `current` to the previous release.
 #######################################
-if ${RESTART_PHP}; then
-  printf -- "- Restart PHP .."
+log "- Switch current -> $(basename "$LAST_STABLE")"
+run ln -sfn "$LAST_STABLE" "$ROOT_PATH/current"
 
-  DONE=0;
-  while [ $DONE -eq 0 ]; do
-    ${RESTART_PHP}
+#######################################
+# Delete the rolled-back release folder.
+#######################################
+log "- Delete release $(basename "$CURRENT_RELEASE")"
+run rm -rf "$CURRENT_RELEASE"
 
-    if [ "$?" = "0" ]; then DONE=1; fi;
-    printf -- '.';
-    sleep 1;
-  done
-
-  printf -- ' DONE!\n';
+#######################################
+# Re-run composer and Craft commands on the now-current release.
+#######################################
+CURRENT_CRAFT="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}"
+log "- Composer install"
+# COMPOSER_FLAGS is intentionally word-split into separate arguments.
+# shellcheck disable=SC2086
+if ! ( cd "$CURRENT_CRAFT" && run "$COMPOSER_BIN" install $COMPOSER_FLAGS ); then
+  die "Composer install failed during rollback."
 fi
+if [ "$RUN_MIGRATE" = "1" ]; then
+  log "- Run migrations"
+  run "$PHP_BIN" "$CURRENT_CRAFT/craft" migrate/all
+fi
+if [ "$RUN_PROJECT_CONFIG" = "1" ]; then
+  log "- Apply project config"
+  run "$PHP_BIN" "$CURRENT_CRAFT/craft" project-config/apply
+fi
+
+#######################################
+# Restart PHP (optional).
+#######################################
+if [ -n "$RESTART_PHP" ]; then
+  log "- Restart PHP"
+  # RESTART_PHP is a command line and is intentionally word-split.
+  # shellcheck disable=SC2086
+  run $RESTART_PHP
+fi
+
+log "=== Rolled back to $(basename "$LAST_STABLE") ==="

@@ -6,3 +6,4 @@ releases
 shared
 deploy.log
 .env
+.DS_Store
