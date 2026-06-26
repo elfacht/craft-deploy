@@ -74,21 +74,41 @@ run() {
 
 #######################################
 # Robustly load a .env-style file.
-# Only lines that look like KEY=VALUE are sourced; comments and blank
-# lines are ignored. Values may contain '=' and quotes (preserved by the
-# shell). Variables are exported so child processes inherit them.
+# Pure-bash line parser (no sourcing, no /dev/stdin, no process
+# substitution) so it works in restricted server environments and never
+# executes code from the config file.
+#   - Blank lines and comment lines (#) are ignored.
+#   - Only valid KEY=VALUE lines are taken; the value keeps any '='.
+#   - Surrounding single/double quotes are stripped; CRLF is tolerated.
+#   - Variables are exported so child processes inherit them.
 # Arguments:
 #   $1 - path to the env file
 #######################################
 load_env() {
   local file="$1"
   [ -f "$file" ] || die "Config file not found: $file"
-  set -a
-  # shellcheck disable=SC1090,SC1091
-  source /dev/stdin <<EOF
-$(grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=' "$file")
-EOF
-  set +a
+
+  local line key val
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"                      # tolerate CRLF
+    line="${line#"${line%%[![:space:]]*}"}"   # strip leading whitespace
+    case "$line" in
+      ''|'#'*)      continue ;;               # blank or comment
+      [A-Za-z_]*=*) ;;                         # looks like KEY=VALUE
+      *)            continue ;;
+    esac
+    key="${line%%=*}"
+    val="${line#*=}"
+    key="${key%"${key##*[![:space:]]}"}"      # trim trailing space from key
+    case "$key" in *[!A-Za-z0-9_]*) continue ;; esac
+    if [ "${#val}" -ge 2 ]; then              # strip matching surrounding quotes
+      case "$val" in
+        \"*\") val="${val#\"}"; val="${val%\"}" ;;
+        \'*\') val="${val#\'}"; val="${val%\'}" ;;
+      esac
+    fi
+    export "$key=$val"
+  done < "$file"
 }
 
 #######################################
