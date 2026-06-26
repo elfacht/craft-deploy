@@ -255,7 +255,7 @@ fi
 # 6. Atomically switch `current` to the new release.
 #######################################
 log "- Switch current -> $CURRENT_RELEASE"
-run ln -sfn "$RELEASE_PATH" "$ROOT_PATH/current"
+switch_current "$RELEASE_PATH" "$ROOT_PATH"
 
 #######################################
 # 7. Post-switch hook (e.g. cache warmup, notifications).

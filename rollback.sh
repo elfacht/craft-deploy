@@ -87,7 +87,7 @@ fi
 # Switch `current` to the previous release.
 #######################################
 log "- Switch current -> $(basename "$LAST_STABLE")"
-run ln -sfn "$LAST_STABLE" "$ROOT_PATH/current"
+switch_current "$LAST_STABLE" "$ROOT_PATH"
 
 #######################################
 # Delete the rolled-back release folder.

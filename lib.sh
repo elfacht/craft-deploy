@@ -191,6 +191,25 @@ prune_old() {
 }
 
 #######################################
+# Point <root>/current at a release, replacing any existing symlink.
+# `ln -sfn` only replaces `current` correctly when it is missing or already
+# a symlink. If `current` exists as a real file/directory (e.g. a docroot
+# the host pre-created), `ln` would nest the link *inside* it — so we refuse
+# and tell the operator to clean up.
+# Arguments:
+#   $1 - target release path
+#   $2 - root path
+#######################################
+switch_current() {
+  local target="$1" root="$2"
+  local link="$root/current"
+  if [ -e "$link" ] && [ ! -L "$link" ]; then
+    die "'$link' exists as a real file/directory, not a symlink. 'current' must be a symlink to a release. Remove the stray '$link' (it should only contain deploy symlinks) and re-run."
+  fi
+  run ln -sfn "$target" "$link"
+}
+
+#######################################
 # Run an optional hook script if it is set and executable.
 # The hook inherits the exported DEPLOY_* vars plus RELEASE_PATH/ROOT_PATH.
 # Arguments:
