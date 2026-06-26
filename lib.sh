@@ -112,6 +112,23 @@ load_env() {
 }
 
 #######################################
+# Normalize an optional subdirectory value so it can be safely appended
+# as "${dir:+/$dir}". Collapses "", ".", "./", "./foo", "foo/" to a clean
+# relative name (or empty for the repo root).
+# Arguments:
+#   $1 - raw value
+# Returns:
+#   normalized value on stdout
+#######################################
+normalize_subdir() {
+  local d="$1"
+  d="${d#./}"      # drop a leading ./
+  d="${d%/}"       # drop a trailing /
+  [ "$d" = "." ] && d=""
+  printf '%s' "$d"
+}
+
+#######################################
 # Fail fast if a required variable is empty.
 # Arguments:
 #   $@ - one or more variable names

@@ -2,6 +2,27 @@
 
 Things change, people change, everything changes.
 
+## [0.7.0](https://github.com/elfacht/craft-deploy/compare/0.6.4...0.7.0) - 2026-06-26
+### Added
+- `lib.sh` with shared functions (config loading, logging, pruning, hooks) and a single source of truth for the version.
+- Central logging: every step is timestamped and written to `deploy.log`.
+- Configurable shared symlinks via `DEPLOY_LINKED_FILES` / `DEPLOY_LINKED_DIRS`.
+- Configurable binaries: `DEPLOY_PHP_BIN`, `DEPLOY_COMPOSER_BIN`, `DEPLOY_COMPOSER_FLAGS`.
+- Toggleable Craft steps: `DEPLOY_RUN_BACKUP`, `DEPLOY_RUN_MIGRATE`, `DEPLOY_RUN_PROJECT_CONFIG`, plus extra `DEPLOY_CRAFT_COMMANDS`.
+- Deploy by ref and faster clones: `DEPLOY_REF`, `DEPLOY_SHALLOW`, `DEPLOY_SUBMODULES`.
+- Before/after hooks: `DEPLOY_HOOK_BEFORE`, `DEPLOY_HOOK_AFTER`.
+- CLI flags: `--dry-run`, `--branch`, `--ref`, `--no-backup`, `--env`, `--verbose`, `--version`, `--help`.
+### Changed
+- `rollback.sh` now uses `project-config/apply` (was the deprecated `project-config/sync`).
+- Release/backup pruning rewritten to be deterministic and to remove all entries beyond the keep count.
+### Fixed
+- Robust `.env` parsing — no longer breaks on commented lines, partial-name matches or values containing `=`.
+- Validation of required config and `set -euo pipefail` prevent dangerous `cd`/`rm` on empty paths.
+- Removed the dead `while DONE` retry loops and their artificial `sleep` delays.
+- Composer-failure cleanup now removes the correct release folder for subfolder installs.
+- Opcache reset script is guaranteed to be removed from the webroot and uses `curl -fsS`.
+- `setup.sh` now copies `.env.example` to `.env` instead of the inverted/destructive `mv`.
+
 ## [0.6.4](https://github.com/elfacht/craft-deploy/compare/0.6.3.1...0.6.4) - 2020-12-29
 ### Changed
 - Use `project-config/apply` for Craft CMS 3.5+

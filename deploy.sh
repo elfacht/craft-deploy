@@ -81,7 +81,7 @@ ROOT_PATH="${DEPLOY_ROOT:-}"
 # Optional with sensible, backward-compatible defaults.
 GIT_BRANCH="${CLI_BRANCH:-${DEPLOY_BRANCH:-}}"
 GIT_REF="${CLI_REF:-${DEPLOY_REF:-}}"
-CRAFT_DIR="${DEPLOY_CRAFT_DIR:-}"
+CRAFT_DIR="$(normalize_subdir "${DEPLOY_CRAFT_DIR:-}")"
 ASSETS_DIR="${DEPLOY_ASSETS_DIR:-uploads}"
 ROOT_URL="${DEPLOY_URL:-}"
 CLEAR_OPCACHE="${DEPLOY_CLEAR_OPCACHE:-0}"
@@ -157,8 +157,13 @@ log "=== Deploying release $CURRENT_RELEASE ==="
 # 1. Back up the database from the live release (if there is one).
 #######################################
 if [ "$RUN_BACKUP" = "1" ] && [ -d "$ROOT_PATH/current" ]; then
-  log "- Back up database"
-  run "$PHP_BIN" "$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}/craft" db/backup
+  backup_craft="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}/craft"
+  if [ -f "$backup_craft" ]; then
+    log "- Back up database"
+    run "$PHP_BIN" "$backup_craft" db/backup
+  else
+    warn "Skipping DB backup: craft not found at $backup_craft (check DEPLOY_CRAFT_DIR)"
+  fi
 fi
 
 #######################################
@@ -217,6 +222,9 @@ for d in ${_dirs[@]+"${_dirs[@]}"};  do [ -n "$d" ] && link_shared "$d"; done
 run_hook "$HOOK_BEFORE" "before"
 
 CRAFT_BIN="$RELEASE_CRAFT/craft"
+if [ "$RUN_MIGRATE" = "1" ] || [ "$RUN_PROJECT_CONFIG" = "1" ] || [ -n "$EXTRA_CRAFT_COMMANDS" ]; then
+  [ -f "$CRAFT_BIN" ] || die "Craft binary not found at $CRAFT_BIN. Check DEPLOY_CRAFT_DIR — leave it empty if Craft lives in the repo root."
+fi
 if [ "$RUN_MIGRATE" = "1" ]; then
   log "- Run migrations"
   run "$PHP_BIN" "$CRAFT_BIN" migrate/all

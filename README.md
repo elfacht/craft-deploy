@@ -1,69 +1,116 @@
 # Craft CMS Deployment
 
-A bash script for zero-downtime Craft CMS deployment to run on production servers. Inspired by the  Capistrano routine. **This script is still beta! Please use it very carefully!**
+A bash script for zero-downtime Craft CMS deployment on production/staging
+servers. Inspired by the Capistrano routine. **Still beta — use it carefully!**
 
 ## Usage
 
-- Copy the files to your project folder on the server.
-- Run `chmod +x deploy.sh setup.sh` to set execution permissions.
-- Run `./setup.sh` to create the initial folders and files.
-- Upload `.env` into `shared/`.
-- Upload `storage` folder into `shared/`.
-- Upload `web/.htaccess` into `shared/web/`.
-- Upload `web/cpresources` folder into `shared/web/`.
-- Upload your `[ASSETS_DIR]` folder and `web/cpresources` folder into `shared/web/`.
+- Copy the files into your project folder on the server.
+- Run `chmod +x deploy.sh rollback.sh setup.sh` to set execution permissions.
+- Run `./setup.sh` to create the initial folders and the `.env` file.
+- Edit `.env` (at minimum set `DEPLOY_REPO` and `DEPLOY_ROOT`).
+- Upload your shared files into `shared/` (see below).
+- Deploy with `./deploy.sh`.
 
-## .gitignore
+### Shared files
 
-Following files and folders must be added to `.gitignore` to make the symlinks work:
+These live outside the releases and are symlinked into every release. Upload
+them into `shared/` mirroring their path in the project:
 
-- .env
-- storage
-- web/[ASSETS_DIR]
-- web/cpresources
-- web/.htaccess
+- `.env` → `shared/.env`
+- `storage/` → `shared/storage/`
+- `web/.htaccess` → `shared/web/.htaccess`
+- `web/[ASSETS_DIR]/` → `shared/web/[ASSETS_DIR]/`
+- `web/cpresources/` → `shared/web/cpresources/`
 
-## Important
+Which files/folders get linked is configurable via `DEPLOY_LINKED_FILES` and
+`DEPLOY_LINKED_DIRS` — the defaults reproduce the list above.
 
-This script is still beta. Please use it carefully and not on large and heavy projects. Or do, whatever, your call.
+### .gitignore (in your Craft project)
+
+These must be git-ignored so the symlinks work:
+
+```
+.env
+storage
+web/[ASSETS_DIR]
+web/cpresources
+web/.htaccess
+```
+
+## CLI options
+
+`deploy.sh` accepts:
+
+```
+--env <path>     Config file path (default: ./.env next to deploy.sh)
+--branch <name>  Override DEPLOY_BRANCH for this run
+--ref <ref>      Deploy a specific tag/commit/branch
+--no-backup      Skip the database backup for this run
+--dry-run        Validate config and print the plan, change nothing
+--verbose        Shell tracing (set -x)
+--version        Print version
+-h, --help       Show help
+```
+
+Start with `./deploy.sh --dry-run` to verify your configuration safely.
 
 ## What does it do?
 
 ### setup.sh
 
-Creates the necessary `releases`, `shared` and `shared/web` folders on the server. Run this script first.
+Creates the `releases`, `shared`, `shared/web`, `shared/storage/backups`
+folders and the `deploy.log` file, and copies `.env.example` to `.env`
+(without overwriting an existing one). Run this first.
 
 ### deploy.sh
 
-- Runs `./craft backup/db` to create a database backup first.
-- Creates a release folder in `releases` named by the current timestamp, i.e. `20190623170859`.
-- Clones your git repo into this folder.
-- Runs `composer install` to install Craft CMS.
-- Creates symlinks for shared folders and files.
-- Runs `./craft migrate/all` and `./craft project-config/sync`.
-- Creates a symlink from the `current` folder to the newest release.
-- Deletes old releases and keeps max. `[DEPLOY_KEEP_RELEASES]` releases.
-- Deletes oldest backup and keeps max. `[DEPLOY_KEEP_BACKUPS]` backups.
-- Restarts PHP to delete symlink cache (optional)
+1. Backs up the database (`craft db/backup`) — optional.
+2. Creates a timestamped release folder in `releases/` and clones the repo/ref.
+3. Runs `composer install`; on failure the broken release is removed.
+4. Creates the configured shared symlinks.
+5. Runs an optional `before` hook, then `craft migrate/all`,
+   `craft project-config/apply`, and any extra commands — each toggleable.
+6. Atomically switches the `current` symlink to the new release.
+7. Runs an optional `after` hook.
+8. Prunes releases/backups down to `DEPLOY_KEEP_RELEASES` / `DEPLOY_KEEP_BACKUPS`.
+9. Clears opcache and/or restarts PHP — optional.
+
+All steps are timestamped and logged to `deploy.log`.
 
 ### rollback.sh
 
-Creates a symlink from `current/` to the second newest release folder (i.e. the former release), deletes the current release folder afterwards and runs `composer install`, `./craft migrate/all` and `./craft project-config/sync`. That's all. No further database actions.
+Switches `current` back to the previous release, deletes the rolled-back
+release, then re-runs `composer install`, `craft migrate/all` and
+`craft project-config/apply`. **No database restore happens** — major
+migrations are rolled back at your own risk.
 
-**If you run a major update with significant database migrations you do it on your own responsibility!**
+### lib.sh
+
+Shared functions (config loading, logging, pruning, hooks) and the single
+source of truth for the version. Sourced by the other scripts.
+
+## Configuration
+
+All options live in `.env`; see [.env.example](.env.example) for the full,
+documented list. Only `DEPLOY_REPO` and `DEPLOY_ROOT` are required.
 
 ## Why should I use it?
 
-When you don't want to spend money on deployment services and tools like Capistrano are just too much to set up for smaller projects.
+When you don't want to pay for a deployment service and Capistrano is too
+much to set up for smaller projects.
 
 ## Roadmap
 
 - [ ] Add DB rollback script
-- [x] Set project folder name in .env
-- [x] dd `.env` for better config handling.
-- [x] Delete releases folder if an error occurs during deployment.
-- [x] Delete not only the oldest release folder, but multiple release folders if there's more than 5 folders (occurs if an deployment fails). (Corrupt folders will be removed if installation fails)
-- [x] Integrate `update.sh` scripts into `deploy.sh` and/or create flags.
+- [ ] Optional smoke test + auto-rollback after switching `current`
+- [ ] Deploy notifications (webhook)
+- [ ] Concurrency lock against parallel deploys
+- [x] Configurable shared symlinks, binaries and Craft commands
+- [x] CLI flags (`--dry-run`, `--branch`, `--ref`, `--no-backup`)
+- [x] Robust `.env` parsing, central logging and shared library
+- [x] Set project folder name in `.env`
+- [x] Delete release folder if an error occurs during deployment
 
 ## License
 
