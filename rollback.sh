@@ -59,18 +59,21 @@ trap 'err "Rollback failed at line $LINENO."' ERR
 
 #######################################
 # Determine the current (newest) and previous releases by name (timestamp).
+# list_entries returns children sorted ascending, so the newest are last.
 #######################################
+list_entries "$ROOT_PATH/releases"
 releases=()
-while IFS= read -r r; do
-  [ -n "$r" ] && releases+=("$r")
-done < <(find "$ROOT_PATH/releases" -mindepth 1 -maxdepth 1 -type d | sort -r)
+for r in ${LIST_ENTRIES[@]+"${LIST_ENTRIES[@]}"}; do
+  [ -d "$r" ] && releases+=("$r")
+done
 
-if [ "${#releases[@]}" -lt 2 ]; then
-  die "Need at least two releases to roll back (found ${#releases[@]})."
+count=${#releases[@]}
+if [ "$count" -lt 2 ]; then
+  die "Need at least two releases to roll back (found $count)."
 fi
 
-CURRENT_RELEASE="${releases[0]}"
-LAST_STABLE="${releases[1]}"
+CURRENT_RELEASE="${releases[$((count - 1))]}"
+LAST_STABLE="${releases[$((count - 2))]}"
 
 log "=== Rolling back to $(basename "$LAST_STABLE") ==="
 

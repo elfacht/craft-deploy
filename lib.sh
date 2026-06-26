@@ -142,6 +142,26 @@ require_var() {
 }
 
 #######################################
+# List the immediate children of a directory into the global array
+# LIST_ENTRIES, sorted ascending by name. Uses sorted glob expansion only
+# (no find, no pipes, no process substitution) so it works on servers
+# without /dev/fd. Dotfiles (e.g. .DS_Store) are intentionally skipped.
+# Arguments:
+#   $1 - parent directory
+#######################################
+list_entries() {
+  local parent="$1" e
+  LIST_ENTRIES=()
+  local _ng=0
+  shopt -q nullglob && _ng=1
+  shopt -s nullglob
+  for e in "$parent"/*; do
+    LIST_ENTRIES+=("$e")
+  done
+  [ "$_ng" = "1" ] || shopt -u nullglob
+}
+
+#######################################
 # Keep the newest N entries in a directory, delete the rest.
 # Entries (files or dirs) are sorted ascending by name; release and backup
 # names are timestamped, so name-sort is chronological. The oldest entries
@@ -156,10 +176,8 @@ prune_old() {
   [ -d "$parent" ] || return 0
   [[ "$keep" =~ ^[0-9]+$ ]] || keep=5
 
-  local entries=() e
-  while IFS= read -r e; do
-    [ -n "$e" ] && entries+=("$e")
-  done < <(find "$parent" -mindepth 1 -maxdepth 1 | sort)
+  list_entries "$parent"
+  local entries=( ${LIST_ENTRIES[@]+"${LIST_ENTRIES[@]}"} )
 
   local total=${#entries[@]}
   local remove=$(( total - keep ))
