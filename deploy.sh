@@ -93,6 +93,7 @@ KEEP_BACKUPS="${DEPLOY_KEEP_BACKUPS:-5}"
 PHP_BIN="${DEPLOY_PHP_BIN:-php}"
 COMPOSER_BIN="${DEPLOY_COMPOSER_BIN:-composer}"
 COMPOSER_FLAGS="${DEPLOY_COMPOSER_FLAGS:---no-interaction --prefer-dist --optimize-autoloader}"
+COMPOSER_VIA_PHP="${DEPLOY_COMPOSER_VIA_PHP:-0}"
 LINKED_FILES="${DEPLOY_LINKED_FILES:-.env web/.htaccess}"
 LINKED_DIRS="${DEPLOY_LINKED_DIRS:-storage web/${ASSETS_DIR} web/cpresources}"
 RUN_BACKUP="${DEPLOY_RUN_BACKUP:-1}"
@@ -192,9 +193,15 @@ fi
 # 3. Composer install. On failure, remove the broken release and abort.
 #######################################
 log "- Composer install"
+# Optionally drive composer through a specific PHP binary (multi-PHP servers).
+if [ "$COMPOSER_VIA_PHP" = "1" ]; then
+  composer_cmd=("$PHP_BIN" "$COMPOSER_BIN")
+else
+  composer_cmd=("$COMPOSER_BIN")
+fi
 # COMPOSER_FLAGS is intentionally word-split into separate arguments.
 # shellcheck disable=SC2086
-if ! ( cd "$RELEASE_CRAFT" && run "$COMPOSER_BIN" install $COMPOSER_FLAGS ); then
+if ! ( cd "$RELEASE_CRAFT" && run "${composer_cmd[@]}" install $COMPOSER_FLAGS ); then
   err "Composer install failed — removing release $CURRENT_RELEASE"
   rm -rf "$RELEASE_PATH"
   exit 1

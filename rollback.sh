@@ -47,6 +47,7 @@ RESTART_PHP="${DEPLOY_RESTART_PHP:-}"
 PHP_BIN="${DEPLOY_PHP_BIN:-php}"
 COMPOSER_BIN="${DEPLOY_COMPOSER_BIN:-composer}"
 COMPOSER_FLAGS="${DEPLOY_COMPOSER_FLAGS:---no-interaction --prefer-dist --optimize-autoloader}"
+COMPOSER_VIA_PHP="${DEPLOY_COMPOSER_VIA_PHP:-0}"
 RUN_MIGRATE="${DEPLOY_RUN_MIGRATE:-1}"
 RUN_PROJECT_CONFIG="${DEPLOY_RUN_PROJECT_CONFIG:-1}"
 
@@ -96,9 +97,14 @@ run rm -rf "$CURRENT_RELEASE"
 #######################################
 CURRENT_CRAFT="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}"
 log "- Composer install"
+if [ "$COMPOSER_VIA_PHP" = "1" ]; then
+  composer_cmd=("$PHP_BIN" "$COMPOSER_BIN")
+else
+  composer_cmd=("$COMPOSER_BIN")
+fi
 # COMPOSER_FLAGS is intentionally word-split into separate arguments.
 # shellcheck disable=SC2086
-if ! ( cd "$CURRENT_CRAFT" && run "$COMPOSER_BIN" install $COMPOSER_FLAGS ); then
+if ! ( cd "$CURRENT_CRAFT" && run "${composer_cmd[@]}" install $COMPOSER_FLAGS ); then
   die "Composer install failed during rollback."
 fi
 if [ "$RUN_MIGRATE" = "1" ]; then
