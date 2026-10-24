@@ -8,7 +8,7 @@
 # @license MIT
 
 # shellcheck disable=SC2034
-CRAFT_DEPLOY_VERSION="0.7.0"
+CRAFT_DEPLOY_VERSION="1.0.0"
 
 # Empty globs expand to nothing (used for listing releases/backups).
 shopt -s nullglob

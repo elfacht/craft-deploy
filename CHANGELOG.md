@@ -2,7 +2,12 @@
 
 Things change, people change, everything changes.
 
-## [0.7.0](https://github.com/elfacht/craft-deploy/compare/0.6.4...0.7.0) - 2026-06-26
+## [1.0.0](https://github.com/elfacht/craft-deploy/compare/0.6.4...1.0.0) - 2026-10-24
+### Upgrading from 0.6.x
+- Upload `lib.sh` together with `deploy.sh` and `rollback.sh`; your existing `.env` keeps working.
+- The scripts require bash. If you trigger deploys from a webhook, call `bash deploy.sh`, not `sh deploy.sh`.
+- The first deploy prunes *all* releases/backups beyond the keep counts (0.6.x removed one per deploy). Pruning sorts by name, so move unrelated files out of `releases/` and `shared/storage/backups/`.
+- Craft in a repo subfolder needs `DEPLOY_CRAFT_DIR`.
 ### Added
 - `lib.sh` with shared functions (config loading, logging, composer/Craft steps, symlink switch, PHP restart) and a single source of truth for the version.
 - Central logging: every step is timestamped and written to `deploy.log`.
@@ -12,16 +17,21 @@ Things change, people change, everything changes.
 - Deploy by ref and faster clones: `DEPLOY_REF`, `DEPLOY_SHALLOW`, `DEPLOY_SUBMODULES`.
 - Before/after hooks: `DEPLOY_HOOK_BEFORE`, `DEPLOY_HOOK_AFTER`.
 - CLI flags: `--dry-run`, `--branch`, `--ref`, `--no-backup`, `--env`, `--verbose`, `--version`, `--help`.
+- `DEPLOY_CRAFT_DIR` for Craft installs in a repo subfolder; `deploy.sh` aborts right after cloning if `composer.json`/`craft` are missing there.
 ### Changed
 - `rollback.sh` now uses `project-config/apply` (was the deprecated `project-config/sync`).
 - Release/backup pruning rewritten to be deterministic and to remove all entries beyond the keep count.
+- Database backup uses `craft db/backup` (was `backup/db`).
+- A configured hook that does not exist now aborts the deploy.
 ### Fixed
 - Robust `.env` parsing — no longer breaks on commented lines, partial-name matches or values containing `=`.
 - Validation of required config and `set -euo pipefail` prevent dangerous `cd`/`rm` on empty paths.
 - Removed the dead `while DONE` retry loops and their artificial `sleep` delays.
 - Composer-failure cleanup now removes the correct release folder for subfolder installs.
-- Opcache reset script is guaranteed to be removed from the webroot and uses `curl -fsS`.
+- Opcache reset script is removed from the webroot after the request and uses `curl -fsS`.
 - `setup.sh` now copies `.env.example` to `.env` instead of the inverted/destructive `mv`.
+### Removed
+- `gitlab-webhook-push.php`.
 
 ## [0.6.4](https://github.com/elfacht/craft-deploy/compare/0.6.3.1...0.6.4) - 2020-12-29
 ### Changed
