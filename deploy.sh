@@ -147,6 +147,12 @@ if [ -n "$GIT_REF" ]; then
   git -C "$RELEASE_PATH" checkout --quiet "$GIT_REF"
 fi
 
+# Fail before composer if Craft is not where DEPLOY_CRAFT_DIR says.
+if [ ! -f "$RELEASE_CRAFT/composer.json" ] || [ ! -f "$RELEASE_CRAFT/craft" ]; then
+  rm -rf "$RELEASE_PATH"
+  die "No composer.json/craft in ${CRAFT_DIR:-the repo root}. Set DEPLOY_CRAFT_DIR to the repo subfolder that contains Craft (empty = repo root)."
+fi
+
 #######################################
 # 3. Composer install. On failure, remove the broken release and abort.
 #######################################
@@ -173,7 +179,6 @@ if [ -n "$HOOK_BEFORE" ]; then
   bash "$HOOK_BEFORE"
 fi
 
-[ -f "$RELEASE_CRAFT/craft" ] || die "Craft not found at $RELEASE_CRAFT/craft. Check DEPLOY_CRAFT_DIR — leave it empty if Craft lives in the repo root."
 craft_update "$RELEASE_CRAFT"
 
 IFS=';' read -ra extra_cmds <<< "$EXTRA_CRAFT_COMMANDS"
