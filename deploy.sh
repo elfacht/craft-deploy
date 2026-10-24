@@ -17,16 +17,10 @@
 
 set -euo pipefail
 
-#######################################
-# Resolve script directory and load shared library.
-#######################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-#######################################
-# Usage / help.
-#######################################
 usage() {
   cat <<EOF
 craft-deploy ${CRAFT_DEPLOY_VERSION}
@@ -48,19 +42,20 @@ EOF
 }
 
 #######################################
-# Parse CLI flags. CLI values override .env where applicable.
+# CLI flags. CLI values override .env.
 #######################################
 ENV_FILE="$SCRIPT_DIR/.env"
 CLI_BRANCH=""
 CLI_REF=""
-CLI_NO_BACKUP=0
+NO_BACKUP=0
+DRY_RUN=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --env)        ENV_FILE="${2:-}"; shift 2 ;;
     --branch)     CLI_BRANCH="${2:-}"; shift 2 ;;
     --ref)        CLI_REF="${2:-}"; shift 2 ;;
-    --no-backup)  CLI_NO_BACKUP=1; shift ;;
+    --no-backup)  NO_BACKUP=1; shift ;;
     --dry-run)    DRY_RUN=1; shift ;;
     --verbose)    set -x; shift ;;
     --version)    echo "$CRAFT_DEPLOY_VERSION"; exit 0 ;;
@@ -70,65 +65,37 @@ while [ $# -gt 0 ]; do
 done
 
 #######################################
-# Load configuration.
+# Configuration.
 #######################################
-load_env "$ENV_FILE"
+load_config "$ENV_FILE"
 
-# Required.
 GIT_REPO="${DEPLOY_REPO:-}"
-ROOT_PATH="${DEPLOY_ROOT:-}"
-
-# Optional with sensible, backward-compatible defaults.
 GIT_BRANCH="${CLI_BRANCH:-${DEPLOY_BRANCH:-}}"
 GIT_REF="${CLI_REF:-${DEPLOY_REF:-}}"
-CRAFT_DIR="$(normalize_subdir "${DEPLOY_CRAFT_DIR:-}")"
-ASSETS_DIR="${DEPLOY_ASSETS_DIR:-uploads}"
 ROOT_URL="${DEPLOY_URL:-}"
 CLEAR_OPCACHE="${DEPLOY_CLEAR_OPCACHE:-0}"
-RESTART_PHP="${DEPLOY_RESTART_PHP:-}"
 KEEP_RELEASES="${DEPLOY_KEEP_RELEASES:-5}"
 KEEP_BACKUPS="${DEPLOY_KEEP_BACKUPS:-5}"
-
-# Flexibility options (all additive).
-PHP_BIN="${DEPLOY_PHP_BIN:-php}"
-COMPOSER_BIN="${DEPLOY_COMPOSER_BIN:-composer}"
-COMPOSER_FLAGS="${DEPLOY_COMPOSER_FLAGS:---no-interaction --prefer-dist --optimize-autoloader}"
-COMPOSER_VIA_PHP="${DEPLOY_COMPOSER_VIA_PHP:-0}"
+ASSETS_DIR="${DEPLOY_ASSETS_DIR:-uploads}"
 LINKED_FILES="${DEPLOY_LINKED_FILES:-.env web/.htaccess}"
 LINKED_DIRS="${DEPLOY_LINKED_DIRS:-storage web/${ASSETS_DIR} web/cpresources}"
 RUN_BACKUP="${DEPLOY_RUN_BACKUP:-1}"
-RUN_MIGRATE="${DEPLOY_RUN_MIGRATE:-1}"
-RUN_PROJECT_CONFIG="${DEPLOY_RUN_PROJECT_CONFIG:-1}"
 EXTRA_CRAFT_COMMANDS="${DEPLOY_CRAFT_COMMANDS:-}"
 SHALLOW="${DEPLOY_SHALLOW:-0}"
 SUBMODULES="${DEPLOY_SUBMODULES:-0}"
 HOOK_BEFORE="${DEPLOY_HOOK_BEFORE:-}"
 HOOK_AFTER="${DEPLOY_HOOK_AFTER:-}"
+[ "$NO_BACKUP" = "1" ] && RUN_BACKUP=0
 
-[ "$CLI_NO_BACKUP" = "1" ] && RUN_BACKUP=0
-
-#######################################
-# Validate required configuration before touching anything.
-#######################################
-require_var DEPLOY_REPO DEPLOY_ROOT
-[ -d "$ROOT_PATH" ] || die "DEPLOY_ROOT does not exist: $ROOT_PATH"
+[ -n "$GIT_REPO" ] || die "Required config 'DEPLOY_REPO' is empty. Set it in your config file."
 if [ "$CLEAR_OPCACHE" = "1" ] && [ -z "$ROOT_URL" ]; then
   die "DEPLOY_CLEAR_OPCACHE is enabled but DEPLOY_URL is empty."
 fi
 
-#######################################
-# Logging + error trap. Now that ROOT_PATH is known, log into it.
-#######################################
-LOG_FILE="$ROOT_PATH/deploy.log"
-trap 'err "Deployment failed at line $LINENO."' ERR
-
-#######################################
-# Derived paths.
-#######################################
 CURRENT_RELEASE="$(date +'%Y%m%d%H%M%S')"
 RELEASE_PATH="$ROOT_PATH/releases/$CURRENT_RELEASE"
 RELEASE_CRAFT="$RELEASE_PATH${CRAFT_DIR:+/$CRAFT_DIR}"
-BACKUPS_DIR="$ROOT_PATH/shared/storage/backups"
+LIVE_CRAFT="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}"
 export ROOT_PATH RELEASE_PATH
 
 #######################################
@@ -138,161 +105,125 @@ if [ "$DRY_RUN" = "1" ]; then
   log "=== DRY RUN — no changes will be made ==="
   log "Repo:           $GIT_REPO"
   log "Branch/Ref:     ${GIT_REF:-${GIT_BRANCH:-<default>}}"
-  log "Root:           $ROOT_PATH"
   log "Release:        $RELEASE_PATH"
   log "Craft dir:      ${CRAFT_DIR:-<root>}"
-  log "Linked files:   $LINKED_FILES"
-  log "Linked dirs:    $LINKED_DIRS"
-  log "DB backup:      $([ "$RUN_BACKUP" = 1 ] && echo yes || echo no)"
-  log "Migrate:        $([ "$RUN_MIGRATE" = 1 ] && echo yes || echo no)"
-  log "Project config: $([ "$RUN_PROJECT_CONFIG" = 1 ] && echo yes || echo no)"
+  log "Linked:         $LINKED_FILES $LINKED_DIRS"
+  log "DB backup:      $RUN_BACKUP / Migrate: $RUN_MIGRATE / Project config: $RUN_PROJECT_CONFIG"
   log "Extra commands: ${EXTRA_CRAFT_COMMANDS:-<none>}"
   log "Keep releases:  $KEEP_RELEASES / Keep backups: $KEEP_BACKUPS"
   log "Clear opcache:  $CLEAR_OPCACHE / Restart PHP: ${RESTART_PHP:-<none>}"
   exit 0
 fi
 
+trap 'err "Deployment failed at line $LINENO."' ERR
 log "=== Deploying release $CURRENT_RELEASE ==="
 
 #######################################
 # 1. Back up the database from the live release (if there is one).
 #######################################
 if [ "$RUN_BACKUP" = "1" ] && [ -d "$ROOT_PATH/current" ]; then
-  backup_craft="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}/craft"
-  if [ -f "$backup_craft" ]; then
+  if [ -f "$LIVE_CRAFT/craft" ]; then
     log "- Back up database"
-    run "$PHP_BIN" "$backup_craft" db/backup
+    "$PHP_BIN" "$LIVE_CRAFT/craft" db/backup
   else
-    warn "Skipping DB backup: craft not found at $backup_craft (check DEPLOY_CRAFT_DIR)"
+    warn "Skipping DB backup: craft not found at $LIVE_CRAFT/craft (check DEPLOY_CRAFT_DIR)"
   fi
 fi
 
 #######################################
-# 2. Create the release directory and clone the repo/ref.
+# 2. Clone the repo/ref into a new release folder.
 #######################################
-[ -d "$ROOT_PATH/releases" ] || die "Missing releases directory. Run ./setup.sh first."
 [ -e "$RELEASE_PATH" ] && die "Release $CURRENT_RELEASE already exists — wait a second and retry."
-run mkdir -p "$RELEASE_PATH"
-log "- Created release folder $CURRENT_RELEASE"
 
 clone_args=()
 [ "$SUBMODULES" = "1" ] && clone_args+=(--recurse-submodules)
-if [ -n "$GIT_REF" ]; then
-  # Tag/commit/branch: full clone, then checkout the ref.
-  log "- Clone $GIT_REPO @ $GIT_REF"
-  run git clone ${clone_args[@]+"${clone_args[@]}"} "$GIT_REPO" "$RELEASE_PATH"
-  run git -C "$RELEASE_PATH" checkout --quiet "$GIT_REF"
-else
+if [ -z "$GIT_REF" ]; then
   [ "$SHALLOW" = "1" ] && clone_args+=(--depth 1)
   [ -n "$GIT_BRANCH" ] && clone_args+=(--branch "$GIT_BRANCH")
-  log "- Clone $GIT_REPO ${GIT_BRANCH:+(branch $GIT_BRANCH)}"
-  run git clone ${clone_args[@]+"${clone_args[@]}"} "$GIT_REPO" "$RELEASE_PATH"
+fi
+log "- Clone $GIT_REPO @ ${GIT_REF:-${GIT_BRANCH:-<default>}}"
+git clone ${clone_args[@]+"${clone_args[@]}"} "$GIT_REPO" "$RELEASE_PATH"
+if [ -n "$GIT_REF" ]; then
+  git -C "$RELEASE_PATH" checkout --quiet "$GIT_REF"
 fi
 
 #######################################
 # 3. Composer install. On failure, remove the broken release and abort.
 #######################################
-log "- Composer install"
-# Optionally drive composer through a specific PHP binary (multi-PHP servers).
-if [ "$COMPOSER_VIA_PHP" = "1" ]; then
-  composer_cmd=("$PHP_BIN" "$COMPOSER_BIN")
-else
-  composer_cmd=("$COMPOSER_BIN")
-fi
-# COMPOSER_FLAGS is intentionally word-split into separate arguments.
-# shellcheck disable=SC2086
-if ! ( cd "$RELEASE_CRAFT" && run "${composer_cmd[@]}" install $COMPOSER_FLAGS ); then
+if ! composer_install "$RELEASE_CRAFT"; then
   err "Composer install failed — removing release $CURRENT_RELEASE"
   rm -rf "$RELEASE_PATH"
   exit 1
 fi
 
 #######################################
-# 4. Create symlinks to shared files and folders.
-#    Each entry X is linked at <release>/<craft>/X -> <root>/shared/X.
+# 4. Symlink shared files and folders: <release>/<craft>/X -> <root>/shared/X.
 #######################################
 log "- Create shared symlinks"
-link_shared() {
-  local rel="$1"
-  local target="$RELEASE_CRAFT/$rel"
-  run mkdir -p "$(dirname "$target")"
-  run ln -sfn "$ROOT_PATH/shared/$rel" "$target"
-}
-read -ra _files <<< "$LINKED_FILES"
-read -ra _dirs  <<< "$LINKED_DIRS"
-for f in ${_files[@]+"${_files[@]}"}; do [ -n "$f" ] && link_shared "$f"; done
-for d in ${_dirs[@]+"${_dirs[@]}"};  do [ -n "$d" ] && link_shared "$d"; done
+for rel in $LINKED_FILES $LINKED_DIRS; do
+  mkdir -p "$(dirname "$RELEASE_CRAFT/$rel")"
+  ln -sfn "$ROOT_PATH/shared/$rel" "$RELEASE_CRAFT/$rel"
+done
 
 #######################################
-# 5. Optional pre-switch hook (e.g. asset build) and Craft commands.
+# 5. Optional before hook (e.g. asset build), then Craft commands.
 #######################################
-run_hook "$HOOK_BEFORE" "before"
+if [ -n "$HOOK_BEFORE" ]; then
+  log "- Run before hook: $HOOK_BEFORE"
+  bash "$HOOK_BEFORE"
+fi
 
-CRAFT_BIN="$RELEASE_CRAFT/craft"
-if [ "$RUN_MIGRATE" = "1" ] || [ "$RUN_PROJECT_CONFIG" = "1" ] || [ -n "$EXTRA_CRAFT_COMMANDS" ]; then
-  [ -f "$CRAFT_BIN" ] || die "Craft binary not found at $CRAFT_BIN. Check DEPLOY_CRAFT_DIR — leave it empty if Craft lives in the repo root."
+[ -f "$RELEASE_CRAFT/craft" ] || die "Craft not found at $RELEASE_CRAFT/craft. Check DEPLOY_CRAFT_DIR — leave it empty if Craft lives in the repo root."
+craft_update "$RELEASE_CRAFT"
+
+IFS=';' read -ra extra_cmds <<< "$EXTRA_CRAFT_COMMANDS"
+for cmd in ${extra_cmds[@]+"${extra_cmds[@]}"}; do
+  [ -n "${cmd//[[:space:]]/}" ] || continue
+  log "- Craft: $cmd"
+  # shellcheck disable=SC2086
+  "$PHP_BIN" "$RELEASE_CRAFT/craft" $cmd
+done
+
+#######################################
+# 6. Switch `current` to the new release, then run the after hook.
+#######################################
+switch_current "$RELEASE_PATH"
+
+if [ -n "$HOOK_AFTER" ]; then
+  log "- Run after hook: $HOOK_AFTER"
+  bash "$HOOK_AFTER"
 fi
-if [ "$RUN_MIGRATE" = "1" ]; then
-  log "- Run migrations"
-  run "$PHP_BIN" "$CRAFT_BIN" migrate/all
-fi
-if [ "$RUN_PROJECT_CONFIG" = "1" ]; then
-  log "- Apply project config"
-  run "$PHP_BIN" "$CRAFT_BIN" project-config/apply
-fi
-if [ -n "$EXTRA_CRAFT_COMMANDS" ]; then
-  IFS=';' read -ra _cmds <<< "$EXTRA_CRAFT_COMMANDS"
-  for cmd in ${_cmds[@]+"${_cmds[@]}"}; do
-    cmd="$(echo "$cmd" | xargs)"   # trim
-    [ -n "$cmd" ] || continue
-    log "- Craft: $cmd"
-    # shellcheck disable=SC2086
-    run "$PHP_BIN" "$CRAFT_BIN" $cmd
+
+#######################################
+# 7. Prune old releases and backups. Names are timestamps, so the glob's
+#    alphabetical order is chronological; the oldest come first.
+#######################################
+prune() {
+  local entries=("$1"/*) i
+  for (( i = 0; i < ${#entries[@]} - $2; i++ )); do
+    log "- Delete old $3 '$(basename "${entries[$i]}")'"
+    rm -rf "${entries[$i]}"
   done
-fi
+}
+prune "$ROOT_PATH/releases" "$KEEP_RELEASES" "release"
+prune "$ROOT_PATH/shared/storage/backups" "$KEEP_BACKUPS" "backup"
 
 #######################################
-# 6. Atomically switch `current` to the new release.
-#######################################
-log "- Switch current -> $CURRENT_RELEASE"
-switch_current "$RELEASE_PATH" "$ROOT_PATH"
-
-#######################################
-# 7. Post-switch hook (e.g. cache warmup, notifications).
-#######################################
-run_hook "$HOOK_AFTER" "after"
-
-#######################################
-# 8. Prune old releases and backups.
-#######################################
-prune_old "$ROOT_PATH/releases" "$KEEP_RELEASES" "release"
-prune_old "$BACKUPS_DIR" "$KEEP_BACKUPS" "backup"
-
-#######################################
-# 9. Clear opcache (resets the symlink cache without restarting PHP).
-#    Writes a one-shot script into the webroot and guarantees its removal.
+# 8. Clear opcache (resets the symlink cache without restarting PHP)
+#    via a one-shot script in the webroot.
 #######################################
 if [ "$CLEAR_OPCACHE" = "1" ]; then
   log "- Clear opcache"
-  webdir="$ROOT_PATH/current${CRAFT_DIR:+/$CRAFT_DIR}/web"
   name="opcache-reset-$(date +%s)-${RANDOM}.php"
-  file="$webdir/$name"
+  file="$LIVE_CRAFT/web/$name"
   printf '<?php opcache_reset();\n' > "$file"
-  # Guarantee the one-shot script is removed even if the script dies here.
-  trap 'rm -f "$file" 2>/dev/null' EXIT
   curl -fsS "$ROOT_URL/$name" >/dev/null || warn "opcache reset request failed"
   rm -f "$file"
-  trap - EXIT
 fi
 
 #######################################
-# 10. Restart PHP (optional; may cause a brief downtime).
+# 9. Restart PHP (optional; may cause a brief downtime).
 #######################################
-if [ -n "$RESTART_PHP" ]; then
-  log "- Restart PHP"
-  # RESTART_PHP is a command line and is intentionally word-split.
-  # shellcheck disable=SC2086
-  run $RESTART_PHP
-fi
+restart_php
 
 log "=== Release $CURRENT_RELEASE deployed successfully ==="

@@ -1,228 +1,136 @@
 #!/bin/bash
 #
 # Shared library for the Craft CMS deployment scripts.
-# Sourced by deploy.sh and rollback.sh.
+# Sourced by deploy.sh, rollback.sh and setup.sh.
 # @see https://github.com/elfacht/craft-deploy
 #
 # @author  Martin Szymanski <martin@elfacht.com>
 # @license MIT
 
-#######################################
-# Single source of truth for the version.
-# Used by the scripts that source this file.
-#######################################
 # shellcheck disable=SC2034
 CRAFT_DEPLOY_VERSION="0.7.0"
 
-#######################################
-# Runtime flags (may be overridden by callers / CLI flags).
-#######################################
-DRY_RUN="${DRY_RUN:-0}"
-LOG_FILE="${LOG_FILE:-}"
+# Empty globs expand to nothing (used for listing releases/backups).
+shopt -s nullglob
+
+LOG_FILE=""
 
 #######################################
-# Logging helpers.
-# Everything is timestamped and, if LOG_FILE is set, mirrored into it.
+# Logging. Timestamped; mirrored into LOG_FILE once it is set.
 #######################################
-_log_ts() {
-  date +'%Y-%m-%dT%H:%M:%S%z'
-}
-
-_log_write() {
-  [ -n "$LOG_FILE" ] || return 0
-  printf '%s\n' "$1" >> "$LOG_FILE" 2>/dev/null || true
-}
-
 log() {
   local line
-  line="[$(_log_ts)] $*"
+  line="[$(date +'%Y-%m-%dT%H:%M:%S%z')] $*"
   printf '%s\n' "$line"
-  _log_write "$line"
+  if [ -n "$LOG_FILE" ]; then printf '%s\n' "$line" >> "$LOG_FILE" || true; fi
 }
-
-warn() {
-  local line
-  line="[$(_log_ts)] WARN: $*"
-  printf '%s\n' "$line" >&2
-  _log_write "$line"
-}
-
-err() {
-  local line
-  line="[$(_log_ts)] ERROR: $*"
-  printf '%s\n' "$line" >&2
-  _log_write "$line"
-}
-
-die() {
-  err "$@"
-  exit 1
-}
+warn() { log "WARN: $*" >&2; }
+err()  { log "ERROR: $*" >&2; }
+die()  { err "$@"; exit 1; }
 
 #######################################
-# Run a command, or just print it when DRY_RUN=1.
-# Use for mutating/external commands (git, composer, ln, rm, curl, php).
-# Builtins like `cd` must be called directly, not through this wrapper.
-#######################################
-run() {
-  if [ "$DRY_RUN" = "1" ]; then
-    log "[dry-run] $*"
-    return 0
-  fi
-  "$@"
-}
-
-#######################################
-# Robustly load a .env-style file.
-# Pure-bash line parser (no sourcing, no /dev/stdin, no process
-# substitution) so it works in restricted server environments and never
-# executes code from the config file.
-#   - Blank lines and comment lines (#) are ignored.
-#   - Only valid KEY=VALUE lines are taken; the value keeps any '='.
-#   - Surrounding single/double quotes are stripped; CRLF is tolerated.
-#   - Variables are exported so child processes inherit them.
+# Load a .env-style file without sourcing it (never executes config code).
+# Skips blank/comment lines, keeps '=' in values, strips surrounding quotes,
+# tolerates CRLF. Variables are exported so hooks inherit them.
 # Arguments:
 #   $1 - path to the env file
 #######################################
 load_env() {
-  local file="$1"
+  local file="$1" line key val
   [ -f "$file" ] || die "Config file not found: $file"
 
-  local line key val
   while IFS= read -r line || [ -n "$line" ]; do
-    line="${line%$'\r'}"                      # tolerate CRLF
-    line="${line#"${line%%[![:space:]]*}"}"   # strip leading whitespace
-    case "$line" in
-      ''|'#'*)      continue ;;               # blank or comment
-      [A-Za-z_]*=*) ;;                         # looks like KEY=VALUE
-      *)            continue ;;
-    esac
+    line="${line%$'\r'}"
+    line="${line#"${line%%[![:space:]]*}"}"
     key="${line%%=*}"
+    key="${key%"${key##*[![:space:]]}"}"
+    [[ "$line" == *=* && "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
     val="${line#*=}"
-    key="${key%"${key##*[![:space:]]}"}"      # trim trailing space from key
-    case "$key" in *[!A-Za-z0-9_]*) continue ;; esac
-    if [ "${#val}" -ge 2 ]; then              # strip matching surrounding quotes
-      case "$val" in
-        \"*\") val="${val#\"}"; val="${val%\"}" ;;
-        \'*\') val="${val#\'}"; val="${val%\'}" ;;
-      esac
-    fi
+    case "$val" in
+      \"*\") val="${val:1:${#val}-2}" ;;
+      \'*\') val="${val:1:${#val}-2}" ;;
+    esac
     export "$key=$val"
   done < "$file"
 }
 
 #######################################
-# Normalize an optional subdirectory value so it can be safely appended
-# as "${dir:+/$dir}". Collapses "", ".", "./", "./foo", "foo/" to a clean
-# relative name (or empty for the repo root).
+# Load the config shared by deploy.sh and rollback.sh.
 # Arguments:
-#   $1 - raw value
-# Returns:
-#   normalized value on stdout
+#   $1 - path to the env file
 #######################################
-normalize_subdir() {
-  local d="$1"
-  d="${d#./}"      # drop a leading ./
-  d="${d%/}"       # drop a trailing /
-  [ "$d" = "." ] && d=""
-  printf '%s' "$d"
+load_config() {
+  load_env "$1"
+
+  ROOT_PATH="${DEPLOY_ROOT:-}"
+  [ -n "$ROOT_PATH" ] || die "Required config 'DEPLOY_ROOT' is empty. Set it in your config file."
+  [ -d "$ROOT_PATH/releases" ] || die "Missing $ROOT_PATH/releases. Run ./setup.sh first."
+  LOG_FILE="$ROOT_PATH/deploy.log"
+
+  # Craft subfolder; "", ".", "./" and "cms/" are all accepted.
+  CRAFT_DIR="${DEPLOY_CRAFT_DIR:-}"
+  CRAFT_DIR="${CRAFT_DIR#./}"
+  CRAFT_DIR="${CRAFT_DIR%/}"
+  [ "$CRAFT_DIR" = "." ] && CRAFT_DIR=""
+
+  PHP_BIN="${DEPLOY_PHP_BIN:-php}"
+  COMPOSER_BIN="${DEPLOY_COMPOSER_BIN:-composer}"
+  COMPOSER_FLAGS="${DEPLOY_COMPOSER_FLAGS:---no-interaction --prefer-dist --optimize-autoloader}"
+  RUN_MIGRATE="${DEPLOY_RUN_MIGRATE:-1}"
+  RUN_PROJECT_CONFIG="${DEPLOY_RUN_PROJECT_CONFIG:-1}"
+  RESTART_PHP="${DEPLOY_RESTART_PHP:-}"
 }
 
 #######################################
-# Fail fast if a required variable is empty.
+# Run composer install in a directory.
+# COMPOSER_BIN and COMPOSER_FLAGS are word-split on purpose, so
+# COMPOSER_BIN may be e.g. "php8.4 /usr/local/bin/composer".
 # Arguments:
-#   $@ - one or more variable names
+#   $1 - Craft directory
 #######################################
-require_var() {
-  local name val
-  for name in "$@"; do
-    val="${!name:-}"
-    [ -n "$val" ] || die "Required config '$name' is empty. Set it in your config file."
-  done
+composer_install() {
+  log "- Composer install"
+  # shellcheck disable=SC2086
+  $COMPOSER_BIN install --working-dir="$1" $COMPOSER_FLAGS
 }
 
 #######################################
-# List the immediate children of a directory into the global array
-# LIST_ENTRIES, sorted ascending by name. Uses sorted glob expansion only
-# (no find, no pipes, no process substitution) so it works on servers
-# without /dev/fd. Dotfiles (e.g. .DS_Store) are intentionally skipped.
+# Run migrations and project-config apply, as configured.
 # Arguments:
-#   $1 - parent directory
+#   $1 - Craft directory
 #######################################
-list_entries() {
-  local parent="$1" e
-  LIST_ENTRIES=()
-  local _ng=0
-  shopt -q nullglob && _ng=1
-  shopt -s nullglob
-  for e in "$parent"/*; do
-    LIST_ENTRIES+=("$e")
-  done
-  [ "$_ng" = "1" ] || shopt -u nullglob
+craft_update() {
+  if [ "$RUN_MIGRATE" = "1" ]; then
+    log "- Run migrations"
+    "$PHP_BIN" "$1/craft" migrate/all
+  fi
+  if [ "$RUN_PROJECT_CONFIG" = "1" ]; then
+    log "- Apply project config"
+    "$PHP_BIN" "$1/craft" project-config/apply
+  fi
 }
 
 #######################################
-# Keep the newest N entries in a directory, delete the rest.
-# Entries (files or dirs) are sorted ascending by name; release and backup
-# names are timestamped, so name-sort is chronological. The oldest entries
-# beyond the keep count are removed.
-# Arguments:
-#   $1 - parent directory
-#   $2 - number of entries to keep
-#   $3 - label for log output (e.g. "release", "backup")
-#######################################
-prune_old() {
-  local parent="$1" keep="$2" label="${3:-entry}"
-  [ -d "$parent" ] || return 0
-  [[ "$keep" =~ ^[0-9]+$ ]] || keep=5
-
-  list_entries "$parent"
-  local entries=( ${LIST_ENTRIES[@]+"${LIST_ENTRIES[@]}"} )
-
-  local total=${#entries[@]}
-  local remove=$(( total - keep ))
-  (( remove > 0 )) || return 0
-
-  local i
-  for (( i = 0; i < remove; i++ )); do
-    log "- Delete old ${label} '$(basename "${entries[$i]}")'"
-    run rm -rf "${entries[$i]}"
-  done
-}
-
-#######################################
-# Point <root>/current at a release, replacing any existing symlink.
-# `ln -sfn` only replaces `current` correctly when it is missing or already
-# a symlink. If `current` exists as a real file/directory (e.g. a docroot
-# the host pre-created), `ln` would nest the link *inside* it — so we refuse
-# and tell the operator to clean up.
+# Point $ROOT_PATH/current at a release.
+# `ln -sfn` would nest the link inside a real directory, so refuse that.
 # Arguments:
 #   $1 - target release path
-#   $2 - root path
 #######################################
 switch_current() {
-  local target="$1" root="$2"
-  local link="$root/current"
+  local link="$ROOT_PATH/current"
   if [ -e "$link" ] && [ ! -L "$link" ]; then
-    die "'$link' exists as a real file/directory, not a symlink. 'current' must be a symlink to a release. Remove the stray '$link' (it should only contain deploy symlinks) and re-run."
+    die "'$link' is a real file/directory, not a symlink. Remove it and re-run."
   fi
-  run ln -sfn "$target" "$link"
+  log "- Switch current -> $(basename "$1")"
+  ln -sfn "$1" "$link"
 }
 
 #######################################
-# Run an optional hook script if it is set and executable.
-# The hook inherits the exported DEPLOY_* vars plus RELEASE_PATH/ROOT_PATH.
-# Arguments:
-#   $1 - hook script path (may be empty)
-#   $2 - label for log output (e.g. "before", "after")
+# Restart PHP if DEPLOY_RESTART_PHP is set (word-split, no shell).
 #######################################
-run_hook() {
-  local hook="$1" label="$2"
-  [ -n "$hook" ] || return 0
-  if [ ! -f "$hook" ]; then
-    warn "Hook '$label' not found: $hook (skipping)"
-    return 0
-  fi
-  log "- Run ${label} hook: $hook"
-  run bash "$hook"
+restart_php() {
+  [ -n "$RESTART_PHP" ] || return 0
+  log "- Restart PHP"
+  # shellcheck disable=SC2086
+  $RESTART_PHP
 }

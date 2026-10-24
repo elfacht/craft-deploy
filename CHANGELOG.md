@@ -4,7 +4,7 @@ Things change, people change, everything changes.
 
 ## [0.7.0](https://github.com/elfacht/craft-deploy/compare/0.6.4...0.7.0) - 2026-06-26
 ### Added
-- `lib.sh` with shared functions (config loading, logging, pruning, hooks) and a single source of truth for the version.
+- `lib.sh` with shared functions (config loading, logging, composer/Craft steps, symlink switch, PHP restart) and a single source of truth for the version.
 - Central logging: every step is timestamped and written to `deploy.log`.
 - Configurable shared symlinks via `DEPLOY_LINKED_FILES` / `DEPLOY_LINKED_DIRS`.
 - Configurable binaries: `DEPLOY_PHP_BIN`, `DEPLOY_COMPOSER_BIN`, `DEPLOY_COMPOSER_FLAGS`.

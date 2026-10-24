@@ -87,8 +87,8 @@ migrations are rolled back at your own risk.
 
 ### lib.sh
 
-Shared functions (config loading, logging, pruning, hooks) and the single
-source of truth for the version. Sourced by the other scripts.
+Shared functions (config loading, logging, composer/Craft steps, symlink
+switch, PHP restart) and the single source of truth for the version. Sourced by the other scripts.
 
 ## Configuration
 
